@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.3.6] - Unreleased
 
 ### Added
-- **Phase 1 `secretprotector` Mandatory Credential Protection**: Integrated `github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets` into [internal/maincmd/auth.go](internal/maincmd/auth.go) and [rsyncd/rsyncd.go](rsyncd/rsyncd.go). All client authentication passwords (`--password-file`, `RSYNC_PASSWORD`, URL credentials) and server secrets (`rsyncd.secrets`) are encrypted in RAM using ephemeral AES-256-GCM master keys via `ProtectedSecret`, revealed on-demand via `.Reveal()`, and immediately zeroed out in RAM upon destruction via `.Destroy()`.
+- **Phase 1 `secretprotector` Mandatory Credential Protection**: Integrated `github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets` into [internal/maincmd/auth.go](internal/maincmd/auth.go) and [rsyncd/rsyncd.go](rsyncd/rsyncd.go) via shared [internal/rsyncsec](internal/rsyncsec/sec.go). All client authentication passwords (`--password-file`, `RSYNC_PASSWORD`, URL credentials) and server secrets (`rsyncd.secrets`) are encrypted in RAM using ephemeral AES-256-GCM master keys via `ProtectedSecret`, revealed on-demand via `.Reveal()`, and immediately zeroed out in RAM upon destruction via `.Destroy()`.
+- **Module & Cmd Restructuring**: Updated Go module path to `github.com/edsilegxrepo/rsync` and reorganized binary executables into standard Go layout (`cmd/rsync/main.go` and `cmd/rsyncd/main.go`).
 
 ## [v0.3.5] - 2026-08-03
 
