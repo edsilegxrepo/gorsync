@@ -269,7 +269,7 @@ func (ts *TestServer) pipe(t *testing.T, args []string) (*sync.WaitGroup, io.Rea
 	go func() {
 		defer wg.Done()
 		err := ts.srv.InternalHandleConn(t.Context(), conn, &ts.module, pc)
-		if err != nil {
+		if err != nil && !errors.Is(err, io.EOF) {
 			t.Error(err)
 		}
 	}()

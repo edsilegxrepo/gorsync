@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -42,6 +43,8 @@ type Module struct {
 	Writable    bool             `toml:"writable"`
 	AuthUsers   []string         `toml:"auth_users"`   // Usernames allowed to connect; empty means no auth
 	SecretsFile string           `toml:"secrets_file"` // Path to file with user:password lines
+	TLSCert     string           `toml:"tls_cert"`     // Path to TLS certificate PEM file
+	TLSKey      string           `toml:"tls_key"`      // Path to TLS private key PEM file
 }
 
 // Option specifies the server options.
@@ -75,6 +78,28 @@ func DontRestrict() Option {
 	})
 }
 
+// WithTLSConfig sets the TLS configuration for the server listener.
+func WithTLSConfig(cfg *tls.Config) Option {
+	return serverOptionFunc(func(s *Server) {
+		s.tlsConfig = cfg
+	})
+}
+
+// WithTLSCertKeyPair sets the TLS certificate and key files for the server.
+func WithTLSCertKeyPair(certFile, keyFile string) Option {
+	return serverOptionFunc(func(s *Server) {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			s.tlsErr = fmt.Errorf("failed to load server TLS cert/key: %v", err)
+			return
+		}
+		s.tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS12,
+		}
+	})
+}
+
 func NewServer(modules []Module, opts ...Option) (*Server, error) {
 	for _, mod := range modules {
 		if err := validateModule(mod); err != nil {
@@ -88,6 +113,10 @@ func NewServer(modules []Module, opts ...Option) (*Server, error) {
 
 	for _, opt := range opts {
 		opt.applyServer(server)
+	}
+
+	if server.tlsErr != nil {
+		return nil, server.tlsErr
 	}
 
 	// Default to os.Stderr if no stderr was specified.
@@ -118,6 +147,8 @@ type Server struct {
 	stderr       io.Writer
 	logger       log.Logger
 	dontRestrict bool
+	tlsConfig    *tls.Config
+	tlsErr       error
 
 	modules []Module
 }
@@ -612,10 +643,18 @@ func (s *Server) handleConnSender(module *Module, crd *rsyncwire.CountingReader,
 }
 
 func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
-	go func() {
-		<-ctx.Done()
-		_ = ln.Close() // unblocks Accept()
-	}()
+	if s.tlsConfig != nil {
+		if s.tlsConfig.MinVersion == 0 {
+			s.tlsConfig.MinVersion = tls.VersionTLS12
+		}
+		ln = tls.NewListener(ln, s.tlsConfig)
+	}
+	if ctx != nil && ctx.Done() != nil {
+		go func() {
+			<-ctx.Done()
+			_ = ln.Close() // unblocks Accept()
+		}()
+	}
 
 	for {
 		conn, err := ln.Accept()

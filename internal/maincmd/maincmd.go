@@ -254,7 +254,19 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 		}()
 	}
 
-	srv, err := rsyncd.NewServer(cfg.Modules, rsyncd.WithStderr(osenv.Stderr))
+	var serverOpts []rsyncd.Option
+	serverOpts = append(serverOpts, rsyncd.WithStderr(osenv.Stderr))
+	cert := cfg.TLSCert
+	key := cfg.TLSKey
+	if cert == "" && len(cfg.Listeners) > 0 {
+		cert = cfg.Listeners[0].TLSCert
+		key = cfg.Listeners[0].TLSKey
+	}
+	if cert != "" && key != "" {
+		serverOpts = append(serverOpts, rsyncd.WithTLSCertKeyPair(cert, key))
+	}
+
+	srv, err := rsyncd.NewServer(cfg.Modules, serverOpts...)
 	if err != nil {
 		return nil, err
 	}

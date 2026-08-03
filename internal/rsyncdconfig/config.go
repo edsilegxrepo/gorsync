@@ -19,12 +19,16 @@ type Listener struct {
 	HTTPMonitoring string      `toml:"http_monitoring"`
 	AnonSSH        string      `toml:"anon_ssh"`
 	AuthorizedSSH  SSHListener `toml:"authorized_ssh"`
+	TLSCert        string      `toml:"tls_cert"`
+	TLSKey         string      `toml:"tls_key"`
 }
 
 type Config struct {
 	Listeners     []Listener      `toml:"listener"`
 	Modules       []rsyncd.Module `toml:"module"`
 	DontNamespace bool            `toml:"dont_namespace"`
+	TLSCert       string          `toml:"tls_cert"`
+	TLSKey        string          `toml:"tls_key"`
 }
 
 func FromString(input string) (*Config, error) {

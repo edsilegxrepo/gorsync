@@ -105,7 +105,7 @@ func parseHostspec(src string, parsingURL bool) (host, path string, port int, _ 
 
 // rsync/options.c:check_for_hostspec
 func checkForHostspec(src string) (host, path string, port int, _ error) {
-	if strings.HasPrefix(src, "rsync://") {
+	if strings.HasPrefix(src, "rsync://") || strings.HasPrefix(src, "rsyncts://") {
 		u, err := url.Parse(src)
 		if err == nil && u.Hostname() != "" {
 			host = u.Hostname()

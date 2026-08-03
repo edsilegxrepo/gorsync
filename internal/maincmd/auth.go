@@ -18,6 +18,8 @@ func extractUserPass(path string) (user, pass string) {
 	s := path
 	if strings.HasPrefix(s, "rsync://") {
 		s = strings.TrimPrefix(s, "rsync://")
+	} else if strings.HasPrefix(s, "rsyncts://") {
+		s = strings.TrimPrefix(s, "rsyncts://")
 	}
 	if idx := strings.IndexByte(s, '@'); idx > -1 {
 		userInfo := s[:idx]

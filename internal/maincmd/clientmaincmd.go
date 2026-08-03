@@ -32,6 +32,9 @@ func rsyncMain(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Options,
 	}
 	// Guaranteed to be non-empty by caller of rsyncMain().
 	src := sources[0]
+	if strings.HasPrefix(src, "rsyncts://") || strings.HasPrefix(dest, "rsyncts://") {
+		opts.SetTLS(true)
+	}
 
 	if opts.Verbose() {
 		osenv.Logf("processing src=%s", src)

@@ -3,9 +3,12 @@ package maincmd
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -57,6 +60,47 @@ func socketClient(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Optio
 		return nil, err
 	}
 	defer conn.Close()
+
+	if opts.TLS() || strings.HasPrefix(remotePath, "rsyncts://") || strings.HasPrefix(host, "rsyncts://") {
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		if opts.TLSInsecure() {
+			tlsConfig.InsecureSkipVerify = true
+		}
+		if opts.TLSCA() != "" {
+			caPEM, err := os.ReadFile(opts.TLSCA())
+			if err != nil {
+				return nil, fmt.Errorf("failed to read TLS CA file: %v", err)
+			}
+			pool := x509.NewCertPool()
+			if !pool.AppendCertsFromPEM(caPEM) {
+				return nil, fmt.Errorf("failed to parse TLS CA certificate from %s", opts.TLSCA())
+			}
+			tlsConfig.RootCAs = pool
+		}
+		if opts.TLSCert() != "" && opts.TLSKey() != "" {
+			cert, err := tls.LoadX509KeyPair(opts.TLSCert(), opts.TLSKey())
+			if err != nil {
+				return nil, fmt.Errorf("failed to load TLS cert/key pair: %v", err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
+
+		serverName := dialHost
+		if idx := strings.LastIndex(serverName, ":"); idx > -1 {
+			serverName = serverName[:idx]
+		}
+		if tlsConfig.ServerName == "" && serverName != "" && net.ParseIP(serverName) == nil {
+			tlsConfig.ServerName = serverName
+		}
+
+		tlsConn := tls.Client(conn, tlsConfig)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			return nil, fmt.Errorf("TLS handshake failed: %v", err)
+		}
+		conn = tlsConn
+	}
 
 	var ioConn io.ReadWriter = conn
 	if timeout := opts.IOTimeoutSeconds(); timeout > 0 {

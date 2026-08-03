@@ -344,6 +344,12 @@ type Options struct {
 	config_file    string
 	daemon_opt     int
 	no_detach      int
+
+	tls          int
+	tls_ca       string
+	tls_cert     string
+	tls_key      string
+	tls_insecure int
 }
 
 type priority int
@@ -746,6 +752,28 @@ func (o *Options) IgnoreTimes() bool          { return o.ignore_times != 0 }
 func (o *Options) OutputMOTD() bool           { return o.output_motd != 0 }
 func (o *Options) RsyncPort() int             { return o.rsync_port }
 func (o *Options) PasswordFile() string       { return o.password_file }
+func (o *Options) TLS() bool                  { return o.tls != 0 }
+func (o *Options) TLSCA() string              { return o.tls_ca }
+func (o *Options) TLSCert() string            { return o.tls_cert }
+func (o *Options) TLSKey() string             { return o.tls_key }
+func (o *Options) TLSInsecure() bool          { return o.tls_insecure != 0 }
+func (o *Options) SetTLS(v bool) {
+	if v {
+		o.tls = 1
+	} else {
+		o.tls = 0
+	}
+}
+func (o *Options) SetTLSCA(v string)         { o.tls_ca = v }
+func (o *Options) SetTLSCert(v string)       { o.tls_cert = v }
+func (o *Options) SetTLSKey(v string)        { o.tls_key = v }
+func (o *Options) SetTLSInsecure(v bool) {
+	if v {
+		o.tls_insecure = 1
+	} else {
+		o.tls_insecure = 0
+	}
+}
 func (o *Options) XferDirs() int              { return o.xfer_dirs }
 func (o *Options) FilterRules() []string      { return o.filterRules }
 func (o *Options) Progress() bool {
@@ -1040,6 +1068,12 @@ func (o *Options) gokrazyTable() []poptOption {
 		{"port", "", POPT_ARG_INT, &o.rsync_port, 0},
 		//{"sockopts", "", POPT_ARG_STRING, &o.sockopts, 0},
 		{"password-file", "", POPT_ARG_STRING, &o.password_file, 0},
+		{"tls", "", POPT_ARG_NONE, &o.tls, 0},
+		{"no-tls", "", POPT_ARG_VAL, &o.tls, 0},
+		{"tls-ca", "", POPT_ARG_STRING, &o.tls_ca, 0},
+		{"tls-cert", "", POPT_ARG_STRING, &o.tls_cert, 0},
+		{"tls-key", "", POPT_ARG_STRING, &o.tls_key, 0},
+		{"tls-insecure", "", POPT_ARG_NONE, &o.tls_insecure, 0},
 		//{"early-input", "", POPT_ARG_STRING, &o.early_input_file, 0},
 		//{"blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 1},
 		//{"no-blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 0},
@@ -1298,6 +1332,12 @@ func (o *Options) tridgeTable() []poptOption {
 		{"port", "", POPT_ARG_INT, &o.rsync_port, 0},
 		{"sockopts", "", POPT_ARG_STRING, &o.sockopts, 0},
 		{"password-file", "", POPT_ARG_STRING, &o.password_file, 0},
+		{"tls", "", POPT_ARG_NONE, &o.tls, 0},
+		{"no-tls", "", POPT_ARG_VAL, &o.tls, 0},
+		{"tls-ca", "", POPT_ARG_STRING, &o.tls_ca, 0},
+		{"tls-cert", "", POPT_ARG_STRING, &o.tls_cert, 0},
+		{"tls-key", "", POPT_ARG_STRING, &o.tls_key, 0},
+		{"tls-insecure", "", POPT_ARG_NONE, &o.tls_insecure, 0},
 		{"early-input", "", POPT_ARG_STRING, &o.early_input_file, 0},
 		{"blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 1},
 		{"no-blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 0},
@@ -1325,6 +1365,10 @@ func NewContext(opts *Options) *Context {
 		Options: opts,
 		table:   table,
 	}
+}
+
+func (pc *Context) GetArgs() []string {
+	return pc.args
 }
 
 // rsync/options.c:parse_arguments
