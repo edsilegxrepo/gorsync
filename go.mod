@@ -14,6 +14,8 @@ require (
 	golang.org/x/sys v0.47.0
 )
 
+require github.com/edsilegxrepo/secretprotector v0.0.3
+
 require (
 	github.com/landlock-lsm/go-landlock v0.9.0
 	kernel.org/pub/linux/libs/security/libcap/psx v1.2.78 // indirect

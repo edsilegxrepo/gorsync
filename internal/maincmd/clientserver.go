@@ -154,11 +154,15 @@ func StartInbandExchange(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.Re
 		if strings.HasPrefix(line, "@RSYNCD: AUTHREQD ") {
 			challenge := strings.TrimPrefix(line, "@RSYNCD: AUTHREQD ")
 			user := resolveUsername(urlUser)
-			pass, err := getPassword(opts, urlPass)
+			passSec, err := getPasswordSecret(opts, urlPass)
 			if err != nil {
 				return false, fmt.Errorf("auth error: %v", err)
 			}
-			hash := generateAuthHash(pass, challenge)
+			hash, err := generateAuthHashSecret(passSec, challenge)
+			passSec.Destroy()
+			if err != nil {
+				return false, fmt.Errorf("auth hash error: %v", err)
+			}
 			fmt.Fprintf(conn, "%s %s\n", user, hash)
 			continue
 		}

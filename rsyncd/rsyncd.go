@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets"
 	"github.com/gokrazy/rsync"
 	"github.com/gokrazy/rsync/internal/log"
 	"github.com/gokrazy/rsync/internal/progress"
@@ -695,10 +696,15 @@ func (s *Server) authServer(rd *bufio.Reader, cwr io.Writer, module *Module, rem
 		s.logger.Printf("auth failed on module %s from %s for %s: %v (secretsFile: %s)", module.Name, remoteAddr, user, err, module.SecretsFile)
 		return fmt.Errorf("auth failed")
 	}
+	defer secret.Destroy()
 
-	expected := authHash(secret, challenge)
+	expected, err := authHashSecret(secret, challenge)
+	if err != nil {
+		s.logger.Printf("auth failed on module %s from %s for %s: %v", module.Name, remoteAddr, user, err)
+		return fmt.Errorf("auth failed")
+	}
 	if response != expected {
-		s.logger.Printf("auth failed on module %s from %s for %s: password mismatch (expected %q, got %q, secret=%q, challenge=%q)", module.Name, remoteAddr, user, expected, response, secret, challenge)
+		s.logger.Printf("auth failed on module %s from %s for %s: password mismatch", module.Name, remoteAddr, user)
 		return fmt.Errorf("auth failed")
 	}
 
@@ -720,22 +726,81 @@ func genChallenge() string {
 	return base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
 }
 
-func authHash(password, challenge string) string {
+func authHashSecret(sec *ProtectedSecret, challenge string) (string, error) {
+	revealed, err := sec.Reveal()
+	if err != nil {
+		return "", err
+	}
+	defer libsecsecrets.ZeroBuffer(revealed)
+
 	h := md4.New()
 	h.Write([]byte{0, 0, 0, 0})
-	h.Write([]byte(password))
+	h.Write(revealed)
 	h.Write([]byte(challenge))
-	return base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
+	return base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)), nil
 }
 
-func lookupSecret(path, user string) (string, error) {
+type ProtectedSecret struct {
+	key       []byte
+	encrypted []byte
+}
+
+func newProtectedSecret(rawPass string) (*ProtectedSecret, error) {
+	ctx := context.Background()
+	keyHex, err := libsecsecrets.GenerateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed generating master key: %w", err)
+	}
+	key, err := libsecsecrets.ResolveKey(ctx, keyHex, "", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed resolving key: %w", err)
+	}
+
+	encBytes, err := libsecsecrets.EncryptBytes(ctx, []byte(rawPass), key)
+	if err != nil {
+		libsecsecrets.ZeroBuffer(key)
+		return nil, fmt.Errorf("failed encrypting secret: %w", err)
+	}
+
+	return &ProtectedSecret{
+		key:       key,
+		encrypted: encBytes,
+	}, nil
+}
+
+func (ps *ProtectedSecret) Reveal() ([]byte, error) {
+	if ps == nil || len(ps.key) == 0 {
+		return nil, fmt.Errorf("secret unavailable or destroyed")
+	}
+	return libsecsecrets.DecryptBytes(context.Background(), ps.encrypted, ps.key)
+}
+
+func (ps *ProtectedSecret) Destroy() {
+	if ps == nil {
+		return
+	}
+	if len(ps.key) > 0 {
+		libsecsecrets.ZeroBuffer(ps.key)
+		ps.key = nil
+	}
+	if len(ps.encrypted) > 0 {
+		libsecsecrets.ZeroBuffer(ps.encrypted)
+		ps.encrypted = nil
+	}
+}
+
+func lookupSecret(path, user string) (*ProtectedSecret, error) {
 	if path == "" {
-		return "", fmt.Errorf("no secrets file configured")
+		return nil, fmt.Errorf("no secrets file configured")
 	}
 	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
-		return "", fmt.Errorf("reading secrets file: %v", err)
+		return nil, fmt.Errorf("reading secrets file: %v", err)
 	}
+	defer func() {
+		libsecsecrets.ZeroBuffer(data)
+	}()
+
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || line[0] == '#' {
@@ -746,8 +811,13 @@ func lookupSecret(path, user string) (string, error) {
 			continue
 		}
 		if parts[0] == user {
-			return strings.TrimSpace(parts[1]), nil
+			pass := strings.TrimSpace(parts[1])
+			sec, err := newProtectedSecret(pass)
+			if err != nil {
+				return nil, fmt.Errorf("creating secret handle: %v", err)
+			}
+			return sec, nil
 		}
 	}
-	return "", fmt.Errorf("user not found in secrets file")
+	return nil, fmt.Errorf("user not found in secrets file")
 }

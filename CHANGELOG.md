@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.3.6] - Unreleased
 
+### Added
+- **Phase 1 `secretprotector` Mandatory Credential Protection**: Integrated `github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets` into [internal/maincmd/auth.go](internal/maincmd/auth.go) and [rsyncd/rsyncd.go](rsyncd/rsyncd.go). All client authentication passwords (`--password-file`, `RSYNC_PASSWORD`, URL credentials) and server secrets (`rsyncd.secrets`) are encrypted in RAM using ephemeral AES-256-GCM master keys via `ProtectedSecret`, revealed on-demand via `.Reveal()`, and immediately zeroed out in RAM upon destruction via `.Destroy()`.
+
 ## [v0.3.5] - 2026-08-03
 
 ### Added

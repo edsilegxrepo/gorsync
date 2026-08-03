@@ -41,3 +41,36 @@ func TestGenerateAuthHash(t *testing.T) {
 		t.Errorf("expected deterministic auth hash output, got %q vs %q", hash1, hash2)
 	}
 }
+
+func TestProtectedSecret(t *testing.T) {
+	t.Parallel()
+
+	rawPass := "MySuperSecretPassword123!"
+	sec, err := NewProtectedSecret(rawPass)
+	if err != nil {
+		t.Fatalf("NewProtectedSecret failed: %v", err)
+	}
+
+	revealed, err := sec.Reveal()
+	if err != nil {
+		t.Fatalf("Reveal failed: %v", err)
+	}
+	if string(revealed) != rawPass {
+		t.Errorf("revealed secret mismatch: got %q, want %q", string(revealed), rawPass)
+	}
+
+	hash, err := generateAuthHashSecret(sec, "challenge123")
+	if err != nil {
+		t.Fatalf("generateAuthHashSecret failed: %v", err)
+	}
+	if hash == "" {
+		t.Fatalf("expected non-empty hash string")
+	}
+
+	// Destroy handle and verify subsequent Reveal returns error
+	sec.Destroy()
+	if _, err := sec.Reveal(); err == nil {
+		t.Errorf("expected error revealing destroyed secret, got nil")
+	}
+}
+
