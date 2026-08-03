@@ -225,7 +225,7 @@ go tool cover -func=coverage.out
 
 ### Common Gotchas & Fixes
 
-1. **WSL Windows Drive Mounts (`/mnt/e`, `/mnt/f`)**:
+1. **WSL Windows Drive Mounts (`/mnt/f`)**:
    - *Issue*: Drive letters may not be auto-mounted inside WSL by default.
    - *Solution*: `toWSLPath` automatically detects missing mounts and mounts them via `mount -t drvfs <Drive:> /mnt/<drive>`.
 
