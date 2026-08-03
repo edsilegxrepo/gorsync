@@ -21,6 +21,8 @@ type Listener struct {
 	AuthorizedSSH  SSHListener `toml:"authorized_ssh"`
 	TLSCert        string      `toml:"tls_cert"`
 	TLSKey         string      `toml:"tls_key"`
+	TLSAuth        string      `toml:"tls_auth"`
+	TLSClientCA    string      `toml:"tls_client_ca"`
 }
 
 type Config struct {
@@ -29,6 +31,8 @@ type Config struct {
 	DontNamespace bool            `toml:"dont_namespace"`
 	TLSCert       string          `toml:"tls_cert"`
 	TLSKey        string          `toml:"tls_key"`
+	TLSAuth       string          `toml:"tls_auth"`
+	TLSClientCA   string          `toml:"tls_client_ca"`
 }
 
 func FromString(input string) (*Config, error) {

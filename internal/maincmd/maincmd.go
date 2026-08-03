@@ -258,12 +258,24 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 	serverOpts = append(serverOpts, rsyncd.WithStderr(osenv.Stderr))
 	cert := cfg.TLSCert
 	key := cfg.TLSKey
+	auth := cfg.TLSAuth
+	clientCA := cfg.TLSClientCA
 	if cert == "" && len(cfg.Listeners) > 0 {
 		cert = cfg.Listeners[0].TLSCert
 		key = cfg.Listeners[0].TLSKey
+		if auth == "" {
+			auth = cfg.Listeners[0].TLSAuth
+		}
+		if clientCA == "" {
+			clientCA = cfg.Listeners[0].TLSClientCA
+		}
 	}
 	if cert != "" && key != "" {
 		serverOpts = append(serverOpts, rsyncd.WithTLSCertKeyPair(cert, key))
+	}
+	if clientCA != "" || auth != "" {
+		requireCert := auth == "require" || auth == "RequireAndVerifyClientCert"
+		serverOpts = append(serverOpts, rsyncd.WithTLSClientCA(clientCA, requireCert))
 	}
 
 	srv, err := rsyncd.NewServer(cfg.Modules, serverOpts...)

@@ -110,7 +110,11 @@ func checkForHostspec(src string) (host, path string, port int, _ error) {
 		if err == nil && u.Hostname() != "" {
 			host = u.Hostname()
 			if u.User != nil && u.User.Username() != "" {
-				host = u.User.Username() + "@" + host
+				if pass, ok := u.User.Password(); ok {
+					host = u.User.Username() + ":" + pass + "@" + host
+				} else {
+					host = u.User.Username() + "@" + host
+				}
 			}
 			path = strings.TrimPrefix(u.Path, "/")
 			port = -1

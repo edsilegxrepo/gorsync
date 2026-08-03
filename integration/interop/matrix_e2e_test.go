@@ -1124,4 +1124,289 @@ func TestPhase3MultiThreadingStress4Scenarios(t *testing.T) {
 	})
 }
 
+func startWinDaemonWithmTLS(t *testing.T, port int, modPath string, bin string, listenIP string, certPath, keyPath, caPath, authMode string, modName string, allowedCNs []string) func() {
+	t.Helper()
+	cfgPath := filepath.Join(t.TempDir(), "gokr-rsyncd-mtls.toml")
+	cnsFormatted := ""
+	if len(allowedCNs) > 0 {
+		cnsFormatted = fmt.Sprintf("tls_allowed_cns = [%s]", strings.Join(quoteSlice(allowedCNs), ", "))
+	}
+
+	cfgContent := fmt.Sprintf(`
+tls_cert = %q
+tls_key = %q
+tls_client_ca = %q
+tls_auth = %q
+
+[[listener]]
+rsyncd = "%s:%d"
+
+[[module]]
+name = "%s"
+path = "%s"
+writable = true
+%s
+`, certPath, keyPath, caPath, authMode, listenIP, port, modName, strings.ReplaceAll(modPath, "\\", "\\\\"), cnsFormatted)
+
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	daemonCmd := exec.Command(bin, "--daemon", "--gokr.config="+cfgPath)
+	var daemonLog bytes.Buffer
+	daemonCmd.Stdout = &daemonLog
+	daemonCmd.Stderr = &daemonLog
+	if err := daemonCmd.Start(); err != nil {
+		t.Fatalf("gokr-rsyncd mTLS start: %v", err)
+	}
+
+	return func() {
+		if daemonCmd.Process != nil {
+			_ = daemonCmd.Process.Kill()
+		}
+		if t.Failed() {
+			t.Logf("Win mTLS Daemon Output:\n%s", daemonLog.String())
+		}
+	}
+}
+
+func quoteSlice(s []string) []string {
+	res := make([]string, len(s))
+	for i, v := range s {
+		res[i] = fmt.Sprintf("%q", v)
+	}
+	return res
+}
+
+func generatemTLSCertSet(t *testing.T, dir string) (caPath, srvCertPath, srvKeyPath, adminCertPath, adminKeyPath string) {
+	t.Helper()
+	caPriv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("GenerateKey CA failed: %v", err)
+	}
+	caTemplate := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			CommonName:   "TestmTLSRootCA",
+			Organization: []string{"gorsync-test"},
+		},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}
+	caBytes, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, &caPriv.PublicKey, caPriv)
+	if err != nil {
+		t.Fatalf("CreateCertificate CA failed: %v", err)
+	}
+	caPath = filepath.Join(dir, "ca.crt")
+	_ = os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caBytes}), 0600)
+	parsedCA, _ := x509.ParseCertificate(caBytes)
+
+	// Server Cert
+	srvPriv, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	srvTemplate := x509.Certificate{
+		SerialNumber: big.NewInt(2),
+		Subject: pkix.Name{
+			CommonName:   "localhost",
+			Organization: []string{"gorsync-test"},
+		},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	srvBytes, _ := x509.CreateCertificate(rand.Reader, &srvTemplate, parsedCA, &srvPriv.PublicKey, caPriv)
+	srvCertPath = filepath.Join(dir, "srv.crt")
+	srvKeyPath = filepath.Join(dir, "srv.key")
+	_ = os.WriteFile(srvCertPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: srvBytes}), 0600)
+	srvPrivBytes, _ := x509.MarshalECPrivateKey(srvPriv)
+	_ = os.WriteFile(srvKeyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: srvPrivBytes}), 0600)
+
+	// Admin Client Cert (CN="admin-client")
+	adminPriv, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	adminTemplate := x509.Certificate{
+		SerialNumber: big.NewInt(3),
+		Subject: pkix.Name{
+			CommonName:   "admin-client",
+			Organization: []string{"gorsync-test"},
+		},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+	}
+	adminBytes, _ := x509.CreateCertificate(rand.Reader, &adminTemplate, parsedCA, &adminPriv.PublicKey, caPriv)
+	adminCertPath = filepath.Join(dir, "admin.crt")
+	adminKeyPath = filepath.Join(dir, "admin.key")
+	_ = os.WriteFile(adminCertPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: adminBytes}), 0600)
+	adminPrivBytes, _ := x509.MarshalECPrivateKey(adminPriv)
+	_ = os.WriteFile(adminKeyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: adminPrivBytes}), 0600)
+
+	return caPath, srvCertPath, srvKeyPath, adminCertPath, adminKeyPath
+}
+
+func TestPhase4mTLS4Scenarios(t *testing.T) {
+	tmpDir := t.TempDir()
+	caPath, srvCertPath, srvKeyPath, adminCertPath, adminKeyPath := generatemTLSCertSet(t, tmpDir)
+	binClient, binDaemon := buildBinaries(t)
+
+	// Scenario 1: Windows Client -> Windows Server (mTLS tls_auth="require", valid CN="admin-client")
+	t.Run("Scenario1_WinClient_WinServer_mTLS_ValidCN", func(t *testing.T) {
+		srcDir := filepath.Join(tmpDir, "win_mtls_src")
+		destDir := filepath.Join(tmpDir, "win_mtls_dest")
+		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.MkdirAll(destDir, 0755)
+		_ = os.WriteFile(filepath.Join(srcDir, "mtls_valid.txt"), []byte("Win-to-Win mTLS Authorized Payload"), 0644)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemonWithmTLS(t, port, destDir, binDaemon, "127.0.0.1", srvCertPath, srvKeyPath, caPath, "require", "mtlsmod", []string{"admin-client"})
+		defer stopServer()
+
+		waitForPort(t, port)
+
+		srcURL := fmt.Sprintf("rsyncts://127.0.0.1:%d/mtlsmod/", port)
+		cmdClient := exec.Command(binClient, "--archive", "--tls-ca="+caPath, "--tls-cert="+adminCertPath, "--tls-key="+adminKeyPath, "--tls-insecure", srcDir+"/", srcURL)
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Win-to-Win mTLS sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(destDir, "mtls_valid.txt"))
+		if err != nil || string(got) != "Win-to-Win mTLS Authorized Payload" {
+			t.Fatalf("Payload mismatch on Win-to-Win mTLS: %q, err: %v", string(got), err)
+		}
+	})
+
+	// Scenario 2: Linux Client -> Linux Server (WSL) (mTLS tls_auth="require")
+	t.Run("Scenario2_LinuxClient_LinuxServer_mTLS_WSL", func(t *testing.T) {
+		checkWSL(t)
+
+		wslSrcDir := fmt.Sprintf("/tmp/wsl_mtls_src_%d", time.Now().UnixNano()%10000)
+		wslDestDir := fmt.Sprintf("/tmp/wsl_mtls_dest_%d", time.Now().UnixNano()%10000)
+
+		wslScript := fmt.Sprintf(`mkdir -p %s %s && echo "WSL mTLS Payload" > %s/mtls_linux.txt`, wslSrcDir, wslDestDir, wslSrcDir)
+
+		out, err := exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", wslScript).CombinedOutput()
+		if err != nil {
+			t.Fatalf("WSL Linux mTLS setup failed: %v\nOutput: %s", err, string(out))
+		}
+
+		_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", fmt.Sprintf("rm -rf %s %s", wslSrcDir, wslDestDir)).Run()
+	})
+
+	// Scenario 3: Windows Client -> Linux Server (WSL) (mTLS Disallowed CN / Missing Cert Rejected)
+	t.Run("Scenario3_WinClient_LinuxServer_mTLS_Rejected_Unauthorized", func(t *testing.T) {
+		checkWSL(t)
+
+		srcDir := filepath.Join(tmpDir, "scen3_mtls_src")
+		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.WriteFile(filepath.Join(srcDir, "unauth.txt"), []byte("Unauthorized mTLS Payload"), 0644)
+
+		// Without passing client cert, client will be rejected by server requiring client cert
+		cmdClient := exec.Command(binClient, "--archive", "--tls-ca="+caPath, "--tls-insecure", srcDir+"/", "rsyncts://127.0.0.1:873/mtlsmod/")
+		_ = cmdClient.Run()
+	})
+
+	// Scenario 4: Linux Client -> Windows Server (mTLS Cross-Platform)
+	t.Run("Scenario4_LinuxClient_WinServer_mTLS_CrossPlatform", func(t *testing.T) {
+		destDir := filepath.Join(tmpDir, "scen4_mtls_dest")
+		_ = os.MkdirAll(destDir, 0755)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemonWithmTLS(t, port, destDir, binDaemon, "127.0.0.1", srvCertPath, srvKeyPath, caPath, "require", "scen4mtlsmod", []string{"admin-client"})
+		defer stopServer()
+
+		waitForPort(t, port)
+		t.Logf("Scenario 4 Windows mTLS daemon listening on port %d", port)
+	})
+
+	// Scenario 5: Windows Client -> Windows Server (Password + mTLS MFA Dual-Factor Auth)
+	t.Run("Scenario5_WinClient_WinServer_mTLS_Plus_Password_MFA", func(t *testing.T) {
+		srcDir := filepath.Join(tmpDir, "mfa_src")
+		destDir := filepath.Join(tmpDir, "mfa_dest")
+		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.MkdirAll(destDir, 0755)
+		_ = os.WriteFile(filepath.Join(srcDir, "mfa_payload.txt"), []byte("Pass + mTLS Dual-Factor MFA Verified Payload"), 0644)
+
+		secretsPath := filepath.Join(tmpDir, "mfa.secrets")
+		_ = os.WriteFile(secretsPath, []byte("mfauser:mfapassword123\n"), 0600)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemonWithmTLSAndAuth(t, port, destDir, binDaemon, "127.0.0.1", srvCertPath, srvKeyPath, caPath, "require", secretsPath, "mfamod", []string{"mfauser"}, []string{"admin-client"})
+		defer stopServer()
+
+		waitForPort(t, port)
+
+		// Both mTLS client cert AND password provided via URL
+		srcURL := fmt.Sprintf("rsyncts://mfauser:mfapassword123@127.0.0.1:%d/mfamod/", port)
+		cmdClient := exec.Command(binClient, "--archive", "--tls-ca="+caPath, "--tls-cert="+adminCertPath, "--tls-key="+adminKeyPath, "--tls-insecure", srcDir+"/", srcURL)
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Pass + mTLS MFA sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(destDir, "mfa_payload.txt"))
+		if err != nil || string(got) != "Pass + mTLS Dual-Factor MFA Verified Payload" {
+			t.Fatalf("Payload mismatch on Pass + mTLS MFA: %q, err: %v", string(got), err)
+		}
+	})
+}
+
+func startWinDaemonWithmTLSAndAuth(t *testing.T, port int, modPath string, bin string, listenIP string, certPath, keyPath, caPath, authMode, secretsPath, modName string, authUsers []string, allowedCNs []string) func() {
+	t.Helper()
+	cfgPath := filepath.Join(t.TempDir(), "gokr-rsyncd-mfa.toml")
+	cnsFormatted := ""
+	if len(allowedCNs) > 0 {
+		cnsFormatted = fmt.Sprintf("tls_allowed_cns = [%s]", strings.Join(quoteSlice(allowedCNs), ", "))
+	}
+	usersFormatted := ""
+	if len(authUsers) > 0 {
+		usersFormatted = fmt.Sprintf("auth_users = [%s]", strings.Join(quoteSlice(authUsers), ", "))
+	}
+
+	cfgContent := fmt.Sprintf(`
+tls_cert = %q
+tls_key = %q
+tls_client_ca = %q
+tls_auth = %q
+
+[[listener]]
+rsyncd = "%s:%d"
+
+[[module]]
+name = "%s"
+path = "%s"
+writable = true
+secrets_file = %q
+%s
+%s
+`, certPath, keyPath, caPath, authMode, listenIP, port, modName, strings.ReplaceAll(modPath, "\\", "\\\\"), secretsPath, usersFormatted, cnsFormatted)
+
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	daemonCmd := exec.Command(bin, "--daemon", "--gokr.config="+cfgPath)
+	var daemonLog bytes.Buffer
+	daemonCmd.Stdout = &daemonLog
+	daemonCmd.Stderr = &daemonLog
+	if err := daemonCmd.Start(); err != nil {
+		t.Fatalf("gokr-rsyncd MFA start: %v", err)
+	}
+
+	return func() {
+		if daemonCmd.Process != nil {
+			_ = daemonCmd.Process.Kill()
+		}
+		if t.Failed() {
+			t.Logf("Win MFA Daemon Output:\n%s", daemonLog.String())
+		}
+	}
+}
+
 

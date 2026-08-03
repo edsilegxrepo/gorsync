@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -44,8 +45,9 @@ type Module struct {
 	Writable    bool             `toml:"writable"`
 	AuthUsers   []string         `toml:"auth_users"`   // Usernames allowed to connect; empty means no auth
 	SecretsFile string           `toml:"secrets_file"` // Path to file with user:password lines
-	TLSCert     string           `toml:"tls_cert"`     // Path to TLS certificate PEM file
-	TLSKey      string           `toml:"tls_key"`      // Path to TLS private key PEM file
+	TLSCert       string           `toml:"tls_cert"`        // Path to TLS certificate PEM file
+	TLSKey        string           `toml:"tls_key"`         // Path to TLS private key PEM file
+	TLSAllowedCNs []string         `toml:"tls_allowed_cns"` // Allowed X.509 Common Names for mTLS RBAC
 }
 
 // Option specifies the server options.
@@ -97,6 +99,31 @@ func WithTLSCertKeyPair(certFile, keyFile string) Option {
 		s.tlsConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			MinVersion:   tls.VersionTLS12,
+		}
+	})
+}
+
+// WithTLSClientCA enables mTLS and sets the Client CA certificate pool for verifying client certs.
+func WithTLSClientCA(caFile string, requireClientCert bool) Option {
+	return serverOptionFunc(func(s *Server) {
+		caPEM, err := os.ReadFile(caFile)
+		if err != nil {
+			s.tlsErr = fmt.Errorf("failed to read Client CA file: %v", err)
+			return
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(caPEM) {
+			s.tlsErr = fmt.Errorf("failed to parse Client CA cert from %s", caFile)
+			return
+		}
+		if s.tlsConfig == nil {
+			s.tlsConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+		}
+		s.tlsConfig.ClientCAs = pool
+		if requireClientCert {
+			s.tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		} else {
+			s.tlsConfig.ClientAuth = tls.VerifyClientCertIfGiven
 		}
 	})
 }
@@ -270,6 +297,30 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 		return err
 	}
 
+	if len(module.TLSAllowedCNs) > 0 {
+		var clientCN string
+		if conn.raw != nil {
+			if tc, ok := conn.raw.(*tls.Conn); ok {
+				state := tc.ConnectionState()
+				if len(state.PeerCertificates) > 0 {
+					clientCN = state.PeerCertificates[0].Subject.CommonName
+				}
+			}
+		}
+		allowed := false
+		for _, cn := range module.TLSAllowedCNs {
+			if cn == clientCN || cn == "*" {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			err := fmt.Errorf("access denied (client CN %q not allowed for module %q)", clientCN, module.Name)
+			fmt.Fprintf(cwr, "@ERROR: %v\n", err)
+			return err
+		}
+	}
+
 	if len(module.AuthUsers) > 0 {
 		if err := s.authServer(rd, cwr, &module, conn.name); err != nil {
 			fmt.Fprintf(cwr, "@ERROR: auth failed on module %s\n", module.Name)
@@ -368,16 +419,22 @@ type Conn struct {
 	crd  *rsyncwire.CountingReader
 	cwr  *rsyncwire.CountingWriter
 	rd   *bufio.Reader
+	raw  net.Conn
 }
 
 func NewConnection(r io.Reader, w io.Writer, name string) *Conn {
 	crd, cwr := rsyncwire.CounterPair(r, w)
 	rd := bufio.NewReader(crd)
+	var raw net.Conn
+	if nc, ok := r.(net.Conn); ok {
+		raw = nc
+	}
 	return &Conn{
 		name: name,
 		crd:  crd,
 		cwr:  cwr,
 		rd:   rd,
+		raw:  raw,
 	}
 }
 
