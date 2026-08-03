@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"unicode"
 
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/version"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/version"
 )
 
 const (

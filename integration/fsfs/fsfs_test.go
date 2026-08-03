@@ -7,8 +7,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/gokrazy/rsync/internal/rsynctest"
-	"github.com/gokrazy/rsync/rsyncd"
+	"github.com/edsilegxrepo/rsync/internal/rsynctest"
+	"github.com/edsilegxrepo/rsync/rsyncd"
 	"github.com/google/go-cmp/cmp"
 )
 

@@ -3,8 +3,8 @@ package rsyncostest
 import (
 	"testing"
 
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/testlogger"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/testlogger"
 )
 
 func New(t *testing.T) *rsyncos.Env {

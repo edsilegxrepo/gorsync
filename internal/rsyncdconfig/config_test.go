@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gokrazy/rsync/internal/rsyncdconfig"
+	"github.com/edsilegxrepo/rsync/internal/rsyncdconfig"
 )
 
 func TestFromString(t *testing.T) {

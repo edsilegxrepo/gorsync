@@ -13,13 +13,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gokrazy/rsync/internal/anonssh"
-	"github.com/gokrazy/rsync/internal/restrict"
-	"github.com/gokrazy/rsync/internal/rsyncdconfig"
-	"github.com/gokrazy/rsync/internal/rsyncopts"
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/rsyncstats"
-	"github.com/gokrazy/rsync/rsyncd"
+	"github.com/edsilegxrepo/rsync/internal/anonssh"
+	"github.com/edsilegxrepo/rsync/internal/restrict"
+	"github.com/edsilegxrepo/rsync/internal/rsyncdconfig"
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/rsync/rsyncd"
 
 	// For profiling and debugging
 	_ "net/http/pprof"

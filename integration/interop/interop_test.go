@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
-	"github.com/gokrazy/rsync/internal/rsyncdconfig"
-	"github.com/gokrazy/rsync/internal/rsynctest"
-	"github.com/gokrazy/rsync/internal/testlogger"
-	"github.com/gokrazy/rsync/rsyncd"
+	"github.com/edsilegxrepo/rsync/internal/rsyncdconfig"
+	"github.com/edsilegxrepo/rsync/internal/rsynctest"
+	"github.com/edsilegxrepo/rsync/internal/testlogger"
+	"github.com/edsilegxrepo/rsync/rsyncd"
 	"github.com/google/go-cmp/cmp"
 )
 

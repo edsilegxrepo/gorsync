@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gokrazy/rsync/internal/maincmd"
+	"github.com/edsilegxrepo/rsync/internal/maincmd"
 )
 
 func TestExtractUserPass(t *testing.T) {

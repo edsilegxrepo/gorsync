@@ -6,7 +6,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/gokrazy/rsync/rsyncclient"
+	"github.com/edsilegxrepo/rsync/rsyncclient"
 )
 
 func TestClientOptionsAndInit(t *testing.T) {

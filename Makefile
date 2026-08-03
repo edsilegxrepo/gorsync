@@ -1,17 +1,17 @@
 .PHONY: all run systemd test privileged-test docker raspi mac staticcheck
 
 all:
-	CGO_ENABLED=0 go install github.com/gokrazy/rsync/cmd/...
+	CGO_ENABLED=0 go install github.com/edsilegxrepo/rsync/cmd/...
 
 staticcheck:
 	staticcheck ./...
 
 run: all
-	sudo ~/go/bin/gokr-rsyncd -modulemap=default=/etc/default
+	sudo ~/go/bin/rsyncd -modulemap=default=/etc/default
 
 systemd: all
 	sudo systemctl stop gokr-rsyncd.socket gokr-rsyncd.service && \
-	sudo cp /home/michael/go/bin/gokr-rsyncd /usr/bin/ && \
+	sudo cp /home/michael/go/bin/rsyncd /usr/bin/ && \
 	sudo cp systemd/gokr-rsyncd.socket systemd/gokr-rsyncd.service /etc/systemd/system/ && \
 	sudo systemctl daemon-reload && \
 	(sudo systemctl kill -f gokr-rsyncd.service; \
@@ -24,7 +24,7 @@ privileged-test:
 	GOGC=off CGO_ENABLED=0 sudo go test -fullpath ./integration/interop ./integration/receiver
 
 docker:
-	CGO_ENABLED=0 GOBIN=$$PWD/docker go install github.com/gokrazy/rsync/cmd/gokr-rsyncd
+	CGO_ENABLED=0 GOBIN=$$PWD/docker go install github.com/edsilegxrepo/rsync/cmd/rsyncd
 	(cd docker && docker build -t=stapelberg/gokrazy-rsync .)
 
 router7:

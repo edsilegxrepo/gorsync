@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gokrazy/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
 )
 
 type filterRuleList struct {

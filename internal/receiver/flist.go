@@ -8,9 +8,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gokrazy/rsync"
-	"github.com/gokrazy/rsync/internal/rsyncchecksum"
-	"github.com/gokrazy/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/rsync/internal/rsyncchecksum"
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
 )
 
 // rsync/flist.c:flist_sort_and_clean

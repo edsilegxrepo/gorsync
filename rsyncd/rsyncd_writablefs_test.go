@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gokrazy/rsync"
-	"github.com/gokrazy/rsync/rsyncd"
+	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/rsync/rsyncd"
 )
 
 type memWritableFile struct {

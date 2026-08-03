@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gokrazy/rsync/internal/log"
+	"github.com/edsilegxrepo/rsync/internal/log"
 )
 
 func TestNewLogger(t *testing.T) {

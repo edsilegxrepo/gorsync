@@ -21,14 +21,15 @@ import (
 	"time"
 
 	"github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets"
-	"github.com/gokrazy/rsync"
-	"github.com/gokrazy/rsync/internal/log"
-	"github.com/gokrazy/rsync/internal/progress"
-	"github.com/gokrazy/rsync/internal/receiver"
-	"github.com/gokrazy/rsync/internal/rsyncopts"
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/rsyncwire"
-	"github.com/gokrazy/rsync/internal/sender"
+	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/rsync/internal/log"
+	"github.com/edsilegxrepo/rsync/internal/progress"
+	"github.com/edsilegxrepo/rsync/internal/receiver"
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncsec"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync/internal/sender"
 	"github.com/mmcloughlin/md4"
 )
 
@@ -726,7 +727,7 @@ func genChallenge() string {
 	return base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
 }
 
-func authHashSecret(sec *ProtectedSecret, challenge string) (string, error) {
+func authHashSecret(sec *rsyncsec.ProtectedSecret, challenge string) (string, error) {
 	revealed, err := sec.Reveal()
 	if err != nil {
 		return "", err
@@ -740,56 +741,7 @@ func authHashSecret(sec *ProtectedSecret, challenge string) (string, error) {
 	return base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)), nil
 }
 
-type ProtectedSecret struct {
-	key       []byte
-	encrypted []byte
-}
-
-func newProtectedSecret(rawPass string) (*ProtectedSecret, error) {
-	ctx := context.Background()
-	keyHex, err := libsecsecrets.GenerateKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed generating master key: %w", err)
-	}
-	key, err := libsecsecrets.ResolveKey(ctx, keyHex, "", "")
-	if err != nil {
-		return nil, fmt.Errorf("failed resolving key: %w", err)
-	}
-
-	encBytes, err := libsecsecrets.EncryptBytes(ctx, []byte(rawPass), key)
-	if err != nil {
-		libsecsecrets.ZeroBuffer(key)
-		return nil, fmt.Errorf("failed encrypting secret: %w", err)
-	}
-
-	return &ProtectedSecret{
-		key:       key,
-		encrypted: encBytes,
-	}, nil
-}
-
-func (ps *ProtectedSecret) Reveal() ([]byte, error) {
-	if ps == nil || len(ps.key) == 0 {
-		return nil, fmt.Errorf("secret unavailable or destroyed")
-	}
-	return libsecsecrets.DecryptBytes(context.Background(), ps.encrypted, ps.key)
-}
-
-func (ps *ProtectedSecret) Destroy() {
-	if ps == nil {
-		return
-	}
-	if len(ps.key) > 0 {
-		libsecsecrets.ZeroBuffer(ps.key)
-		ps.key = nil
-	}
-	if len(ps.encrypted) > 0 {
-		libsecsecrets.ZeroBuffer(ps.encrypted)
-		ps.encrypted = nil
-	}
-}
-
-func lookupSecret(path, user string) (*ProtectedSecret, error) {
+func lookupSecret(path, user string) (*rsyncsec.ProtectedSecret, error) {
 	if path == "" {
 		return nil, fmt.Errorf("no secrets file configured")
 	}
@@ -812,7 +764,7 @@ func lookupSecret(path, user string) (*ProtectedSecret, error) {
 		}
 		if parts[0] == user {
 			pass := strings.TrimSpace(parts[1])
-			sec, err := newProtectedSecret(pass)
+			sec, err := rsyncsec.NewProtectedSecret(pass)
 			if err != nil {
 				return nil, fmt.Errorf("creating secret handle: %v", err)
 			}

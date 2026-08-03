@@ -1,4 +1,4 @@
-module github.com/gokrazy/rsync
+module github.com/edsilegxrepo/rsync
 
 go 1.25.0
 

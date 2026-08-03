@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/gokrazy/rsync/internal/rsyncopts"
-	"github.com/gokrazy/rsync/internal/rsyncstats"
-	"github.com/gokrazy/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
 )
 
 // rsync/main.c:handle_stats

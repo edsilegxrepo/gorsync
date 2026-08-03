@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gokrazy/rsync/internal/restrict"
+	"github.com/edsilegxrepo/rsync/internal/restrict"
 )
 
 func restrictToModules(modules []Module) error {

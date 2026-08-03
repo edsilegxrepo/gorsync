@@ -74,19 +74,19 @@ func TestWSLInterop_ClientAndServer(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// 1. Build Windows gokr-rsync and gokr-rsyncd binaries
-	gokrRsync := filepath.Join(tmpDir, "gokr-rsync.exe")
-	gokrRsyncd := filepath.Join(tmpDir, "gokr-rsyncd.exe")
+	gokrRsync := filepath.Join(tmpDir, "rsync.exe")
+	gokrRsyncd := filepath.Join(tmpDir, "rsyncd.exe")
 
-	cmdBuildClient := exec.Command("go", "build", "-o", gokrRsync, "./cmd/gokr-rsync")
+	cmdBuildClient := exec.Command("go", "build", "-o", gokrRsync, "./cmd/rsync")
 	cmdBuildClient.Dir = findRepoRoot(t)
 	if out, err := cmdBuildClient.CombinedOutput(); err != nil {
-		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
+		t.Fatalf("go build rsync failed: %v\nOutput: %s", err, string(out))
 	}
 
-	cmdBuildDaemon := exec.Command("go", "build", "-o", gokrRsyncd, "./cmd/gokr-rsyncd")
+	cmdBuildDaemon := exec.Command("go", "build", "-o", gokrRsyncd, "./cmd/rsyncd")
 	cmdBuildDaemon.Dir = findRepoRoot(t)
 	if out, err := cmdBuildDaemon.CombinedOutput(); err != nil {
-		t.Fatalf("go build gokr-rsyncd failed: %v\nOutput: %s", err, string(out))
+		t.Fatalf("go build rsyncd failed: %v\nOutput: %s", err, string(out))
 	}
 
 	// Create test dataset

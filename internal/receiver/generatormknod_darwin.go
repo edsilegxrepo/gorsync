@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/gokrazy/rsync"
+	"github.com/edsilegxrepo/rsync"
 	"golang.org/x/sys/unix"
 )
 

@@ -23,9 +23,9 @@ import (
 	"io"
 	"net"
 
-	"github.com/gokrazy/rsync/internal/maincmd"
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/rsync/internal/maincmd"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
 )
 
 // Cmd represents an rsync invocation being prepared or run.

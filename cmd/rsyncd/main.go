@@ -1,8 +1,4 @@
-// Tool gokr-rsyncd is an old name for gokr-rsync.
-//
-// Please update your setup to install/use gokr-rsync directly instead.
-//
-// This program will be removed in a future release.
+// Tool rsyncd is the standalone rsync server daemon executable.
 package main
 
 import (
@@ -12,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gokrazy/rsync/rsynccmd"
+	"github.com/edsilegxrepo/rsync/rsynccmd"
 )
 
 func main() {

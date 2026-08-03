@@ -1,4 +1,4 @@
-// Tool gokr-rsync is an rsync Go implementation.
+// Tool rsync is the main rsync client/server executable.
 package main
 
 import (
@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gokrazy/rsync/rsynccmd"
+	"github.com/edsilegxrepo/rsync/rsynccmd"
 )
 
 func main() {

@@ -17,17 +17,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gokrazy/rsync/internal/anonssh"
-	"github.com/gokrazy/rsync/internal/maincmd"
-	"github.com/gokrazy/rsync/internal/rsyncdconfig"
-	"github.com/gokrazy/rsync/internal/rsyncopts"
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/rsyncostest"
-	"github.com/gokrazy/rsync/internal/rsyncstats"
-	"github.com/gokrazy/rsync/internal/testlogger"
-	"github.com/gokrazy/rsync/rsyncclient"
-	"github.com/gokrazy/rsync/rsynccmd"
-	"github.com/gokrazy/rsync/rsyncd"
+	"github.com/edsilegxrepo/rsync/internal/anonssh"
+	"github.com/edsilegxrepo/rsync/internal/maincmd"
+	"github.com/edsilegxrepo/rsync/internal/rsyncdconfig"
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncostest"
+	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/rsync/internal/testlogger"
+	"github.com/edsilegxrepo/rsync/rsyncclient"
+	"github.com/edsilegxrepo/rsync/rsynccmd"
+	"github.com/edsilegxrepo/rsync/rsyncd"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -289,11 +289,11 @@ func (ts *TestServer) RunClient(t *testing.T, args []string, remaining []string)
 	}
 	wg, rw := ts.pipe(t, cl.ServerCommandOptions("./"))
 	res, err := cl.Run(t.Context(), rw, remaining)
+	// Ensure server goroutine releases all file handles before evaluating client status.
+	wg.Wait()
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Ensure an error would be displayed, if any.
-	wg.Wait()
 	return res.Stats
 }
 

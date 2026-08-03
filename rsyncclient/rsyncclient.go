@@ -1,5 +1,5 @@
 // Package rsyncclient implements an rsync client (only), but note that
-// gokrazy/rsync contains a native Go rsync implementation that supports sending
+// edsilegxrepo/rsync contains a native Go rsync implementation that supports sending
 // and receiving files as client or server, compatible with the original tridge
 // rsync (from the samba project) or openrsync (used on OpenBSD and macOS 15+).
 package rsyncclient
@@ -12,12 +12,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/gokrazy/rsync/internal/maincmd"
-	"github.com/gokrazy/rsync/internal/receiver"
-	"github.com/gokrazy/rsync/internal/rsyncopts"
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/rsyncstats"
-	"github.com/gokrazy/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync/internal/maincmd"
+	"github.com/edsilegxrepo/rsync/internal/receiver"
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
 )
 
 // Option specifies the client options.

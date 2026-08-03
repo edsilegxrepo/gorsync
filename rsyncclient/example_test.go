@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/gokrazy/rsync/rsyncclient"
+	"github.com/edsilegxrepo/rsync/rsyncclient"
 )
 
 // ExampleNew demonstrates using rsyncclient as a Go library to perform an rsync transfer over a net.Conn.

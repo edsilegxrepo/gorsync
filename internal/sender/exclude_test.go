@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/gokrazy/rsync/internal/rsyncwire"
-	"github.com/gokrazy/rsync/internal/sender"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync/internal/sender"
 )
 
 func TestParseFilterRulesAndWildmatch(t *testing.T) {

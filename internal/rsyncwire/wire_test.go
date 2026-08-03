@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
 )
 
 func TestConnAndBuffer(t *testing.T) {

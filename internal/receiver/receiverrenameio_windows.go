@@ -37,17 +37,22 @@ func (p *nativePendingFile) Write(buf []byte) (n int, _ error) {
 }
 
 func (p *nativePendingFile) CloseAtomicallyReplace() error {
+	tmpName := p.f.Name()
 	if err := p.f.Close(); err != nil {
+		_ = os.Remove(tmpName)
 		return err
 	}
-	if err := os.Rename(p.f.Name(), p.fn); err != nil {
+	if err := os.Rename(tmpName, p.fn); err != nil {
+		_ = os.Remove(tmpName)
 		return err
 	}
 	return nil
 }
 
 func (p *nativePendingFile) Cleanup() {
-	tmpName := p.f.Name()
-	_ = p.f.Close()
-	_ = os.Remove(tmpName)
+	if p.f != nil {
+		tmpName := p.f.Name()
+		_ = p.f.Close()
+		_ = os.Remove(tmpName)
+	}
 }

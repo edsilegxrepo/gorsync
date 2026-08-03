@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gokrazy/rsync/internal/rsynctest"
-	"github.com/gokrazy/rsync/internal/testlogger"
+	"github.com/edsilegxrepo/rsync/internal/rsynctest"
+	"github.com/edsilegxrepo/rsync/internal/testlogger"
 )
 
 func TestMain(m *testing.M) {

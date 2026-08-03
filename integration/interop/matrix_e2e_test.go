@@ -52,13 +52,13 @@ func TestE2EMatrixAndStress(t *testing.T) {
 	checkWSL(t)
 
 	tmpDir := t.TempDir()
-	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
-	binDaemon := filepath.Join(tmpDir, "gokr-rsync.exe") // gokr-rsync handles --daemon
+	binClient := filepath.Join(tmpDir, "rsync.exe")
+	binDaemon := filepath.Join(tmpDir, "rsync.exe") // rsync handles --daemon
 
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/gokr-rsync")
+	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
 	cmdBuild.Dir = findRepoRoot(t)
 	if out, err := cmdBuild.CombinedOutput(); err != nil {
-		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
+		t.Fatalf("go build rsync failed: %v\nOutput: %s", err, string(out))
 	}
 
 	topologies := []struct {
@@ -620,11 +620,11 @@ func verifyFileEqual(t *testing.T, f1, f2 string) {
 func TestE2ELocalDiskToDisk(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/gokr-rsync")
+	binClient := filepath.Join(tmpDir, "rsync.exe")
+	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
 	cmdBuild.Dir = findRepoRoot(t)
 	if out, err := cmdBuild.CombinedOutput(); err != nil {
-		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
+		t.Fatalf("go build rsync failed: %v\nOutput: %s", err, string(out))
 	}
 
 	// 1. Native Windows Disk-to-Disk Sync

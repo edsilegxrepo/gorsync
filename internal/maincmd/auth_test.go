@@ -1,7 +1,13 @@
 package maincmd
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncsec"
 )
 
 func TestExtractUserPass(t *testing.T) {
@@ -46,7 +52,7 @@ func TestProtectedSecret(t *testing.T) {
 	t.Parallel()
 
 	rawPass := "MySuperSecretPassword123!"
-	sec, err := NewProtectedSecret(rawPass)
+	sec, err := rsyncsec.NewProtectedSecret(rawPass)
 	if err != nil {
 		t.Fatalf("NewProtectedSecret failed: %v", err)
 	}
@@ -71,6 +77,65 @@ func TestProtectedSecret(t *testing.T) {
 	sec.Destroy()
 	if _, err := sec.Reveal(); err == nil {
 		t.Errorf("expected error revealing destroyed secret, got nil")
+	}
+}
+
+func TestGetPasswordSecret(t *testing.T) {
+	// 1. From URL pass
+	sec1, err := getPasswordSecret(&rsyncopts.Options{}, "urlpass123")
+	if err != nil {
+		t.Fatalf("getPasswordSecret from urlPass failed: %v", err)
+	}
+	rev1, _ := sec1.Reveal()
+	if string(rev1) != "urlpass123" {
+		t.Errorf("expected 'urlpass123', got %q", string(rev1))
+	}
+	sec1.Destroy()
+
+	// 2. From password file
+	tmpDir := t.TempDir()
+	passPath := filepath.Join(tmpDir, "pass.txt")
+	if err := os.WriteFile(passPath, []byte("filepass456\nsecondline"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	osenv := &rsyncos.Env{}
+	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithGokrazyDefaults(osenv))
+	if err := pc.ParseArguments(osenv, []string{"--password-file=" + passPath}); err != nil {
+		t.Fatalf("ParseArguments failed: %v", err)
+	}
+	opts := pc.Options
+	sec2, err := getPasswordSecret(opts, "")
+	if err != nil {
+		t.Fatalf("getPasswordSecret from file failed: %v", err)
+	}
+	rev2, _ := sec2.Reveal()
+	if string(rev2) != "filepass456" {
+		t.Errorf("expected 'filepass456', got %q", string(rev2))
+	}
+	sec2.Destroy()
+
+	// 3. From environment variable
+	t.Setenv("RSYNC_PASSWORD", "envpass789")
+	sec3, err := getPasswordSecret(&rsyncopts.Options{}, "")
+	if err != nil {
+		t.Fatalf("getPasswordSecret from env failed: %v", err)
+	}
+	rev3, _ := sec3.Reveal()
+	if string(rev3) != "envpass789" {
+		t.Errorf("expected 'envpass789', got %q", string(rev3))
+	}
+	sec3.Destroy()
+}
+
+func TestResolveUsername(t *testing.T) {
+	if u := resolveUsername("custom_alice"); u != "custom_alice" {
+		t.Errorf("expected 'custom_alice', got %q", u)
+	}
+
+	t.Setenv("RSYNC_USERNAME", "env_bob")
+	if u := resolveUsername(""); u != "env_bob" {
+		t.Errorf("expected 'env_bob', got %q", u)
 	}
 }
 

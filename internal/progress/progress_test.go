@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gokrazy/rsync/internal/progress"
+	"github.com/edsilegxrepo/rsync/internal/progress"
 )
 
 func TestProgressPrinterUnitsAndRates(t *testing.T) {

@@ -3,7 +3,7 @@ package rsync
 import (
 	"fmt"
 
-	"github.com/gokrazy/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
 )
 
 // rsync/rsync.h:struct sum_buf
