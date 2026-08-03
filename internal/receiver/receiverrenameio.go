@@ -12,6 +12,12 @@ type nativePendingFile struct {
 	*renameio.PendingFile
 }
 
+func (n *nativePendingFile) Cleanup() {
+	if n.PendingFile != nil {
+		_ = n.PendingFile.Cleanup()
+	}
+}
+
 func newNativePendingFile(root *os.Root, fn string, tempDir string) (*nativePendingFile, error) {
 	opts := []renameio.Option{renameio.WithRoot(root)}
 	if tempDir != "" {
