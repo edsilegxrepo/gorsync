@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.6] - Unreleased
+
 ## [v0.3.5] - 2026-08-03
 
 ### Added
+- **Local Disk-to-Disk E2E Integration Suite**: Added `TestE2ELocalDiskToDisk` in [integration/interop/matrix_e2e_test.go](integration/interop/matrix_e2e_test.go) asserting 100% preservation of executable mode bits (`0755`), modification times (`mtime`), symlinks (`-l`), hardlinks (`-H`), and SHA256 content parity natively on Windows, Linux WSL, and cross-drive mounts.
 - **Sender `--delete` & Filter Support**: Added full support for `--delete`, `--delete-excluded`, `--exclude`, `--include`, and `--filter` flags when pushing files as a client sender.
 - **Wildcard Pattern Matching**: Implemented `wildmatch` (`*`, `**`, `?`, `[...]` character classes) for rsync filter rules in [internal/sender/exclude.go](internal/sender/exclude.go).
 - **Rsync Daemon Protocol Authentication**:
@@ -21,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fast Size-Only Mode (`--size-only`)**: Added support for `--size-only` flag to bypass timestamp comparisons and skip transfers whenever file sizes match in [internal/receiver/generator.go](internal/receiver/generator.go).
 - **Structured Directory Listing API (Issue #64)**: Added `Client.ListFiles()` and `rsyncclient.File` struct in [rsyncclient/rsyncclient.go](rsyncclient/rsyncclient.go), allowing programmatic retrieval of structured Go file objects from remote rsync daemons without performing disk I/O or parsing text output.
 - **Writable Virtual Filesystem Interface (`WritableFS`) (Issue #8)**: Introduced `rsync.WritableFS` interface in [writablefs.go](writablefs.go) and added `WritableFS` support to `rsyncd.Module` and `receiver.TransferOpts`, enabling pure Go in-memory or cloud storage (S3/GCS/Database) upload targets without physical disk access.
-- **Phase 0 Local Disk-to-Disk E2E Integration Suite**: Added `TestE2ELocalDiskToDisk` in [integration/interop/matrix_e2e_test.go](integration/interop/matrix_e2e_test.go) asserting 100% preservation of executable mode bits (`0755`), modification times (`mtime`), symlinks (`-l`), hardlinks (`-H`), and SHA256 content parity natively on Windows, Linux WSL, and cross-drive mounts.
 - **Staged Temporary Directory (`--temp-dir` / `-T`)**: Added support for `--temp-dir=DIR` (`-T`) in [internal/receiver/receiverrenameio.go](internal/receiver/receiverrenameio.go) to stage partial incoming transfers in an isolated directory.
 - **Hardlink Preservation (`-H` / `--hard-links`)**: Added hardlink preservation support (`PreserveHardlinks`) in [rsyncd/rsyncd.go](rsyncd/rsyncd.go) and [internal/maincmd/clientmaincmd.go](internal/maincmd/clientmaincmd.go).
 - **Cross-Platform Interoperability Matrix & WSL 2 Integration Suite**: Added end-to-end matrix test suite in [integration/interop/matrix_e2e_test.go](integration/interop/matrix_e2e_test.go) and [integration/interop/wsl_e2e_test.go](integration/interop/wsl_e2e_test.go) validating all 4 dataflow topologies (`Win Client -> Win Server`, `Linux Client -> Linux Server`, `Win Client -> Linux Server`, `Linux Client -> Win Server`) across flags, symlinks, hardlinks, executable modes (`0755`), daemon authentication, chroot sandboxing, and high-volume stress testing.
