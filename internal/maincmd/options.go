@@ -91,12 +91,12 @@ func parseHostspec(src string, parsingURL bool) (host, path string, port int, _ 
 	}
 	host += src[hoststart:hostlen]
 
-	// On Windows, a local disk path like C:\rsync parses as
-	// host="C", path="\\rsync". Detect that and error out.
+	// On Windows, a local disk path like C:\rsync or C:/rsync parses as
+	// host="C", path="\\rsync" or "/rsync". Detect that and error out.
 	isDriveLetter := len(host) == 1 &&
 		((host[0] >= 'A' && host[0] <= 'Z') ||
 			(host[0] >= 'a' && host[0] <= 'z'))
-	if isDriveLetter && src[i] == os.PathSeparator {
+	if isDriveLetter && (src[i] == '/' || src[i] == '\\' || src[i] == os.PathSeparator) {
 		return "", "", 0, fmt.Errorf("local disk path detected")
 	}
 

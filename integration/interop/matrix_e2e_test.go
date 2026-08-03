@@ -615,3 +615,106 @@ func verifyFileEqual(t *testing.T, f1, f2 string) {
 		t.Fatalf("SHA256 mismatch between %s and %s", f1, f2)
 	}
 }
+
+func TestE2ELocalDiskToDisk(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
+	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/gokr-rsync")
+	cmdBuild.Dir = findRepoRoot(t)
+	if out, err := cmdBuild.CombinedOutput(); err != nil {
+		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
+	}
+
+	// 1. Native Windows Disk-to-Disk Sync
+	t.Run("Windows_Disk_To_Disk", func(t *testing.T) {
+		srcDir := filepath.Join(tmpDir, "win_src")
+		destDir := filepath.Join(tmpDir, "win_dest")
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.MkdirAll(filepath.Join(srcDir, "sub"), 0o755)
+
+		file1 := filepath.Join(srcDir, "file1.txt")
+		_ = os.WriteFile(file1, []byte("Hello World Local Disk 1"), 0o644)
+
+		script := filepath.Join(srcDir, "script.sh")
+		_ = os.WriteFile(script, []byte("#!/bin/sh\necho Local Disk Test\n"), 0o755)
+
+		nested := filepath.Join(srcDir, "sub", "nested.txt")
+		_ = os.WriteFile(nested, []byte("Nested Content Local"), 0o644)
+
+		pastTime := time.Now().Add(-2 * time.Hour).Truncate(time.Second)
+		_ = os.Chtimes(file1, pastTime, pastTime)
+		_ = os.Chtimes(script, pastTime, pastTime)
+
+		symlinkPath := filepath.Join(srcDir, "symlink.txt")
+		_ = os.Symlink("file1.txt", symlinkPath)
+
+		hl1 := filepath.Join(srcDir, "hardlink1.txt")
+		_ = os.WriteFile(hl1, []byte("Hardlink Payload Data"), 0o644)
+		hl2 := filepath.Join(srcDir, "hardlink2.txt")
+		_ = os.Link(hl1, hl2)
+
+		// Perform local sync: gokr-rsync -av -H win_src/ win_dest/
+		cmd := exec.Command(binClient, "-av", "-H", filepath.ToSlash(srcDir)+"/", destDir)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Windows Local Disk-to-Disk sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		// Assertions
+		verifyFileEqual(t, file1, filepath.Join(destDir, "file1.txt"))
+		verifyFileEqual(t, script, filepath.Join(destDir, "script.sh"))
+		verifyFileEqual(t, nested, filepath.Join(destDir, "sub", "nested.txt"))
+		verifyFileEqual(t, hl1, filepath.Join(destDir, "hardlink1.txt"))
+		verifyFileEqual(t, hl2, filepath.Join(destDir, "hardlink2.txt"))
+
+		// Timestamp check
+		destFile1Info, err := os.Stat(filepath.Join(destDir, "file1.txt"))
+		if err != nil {
+			t.Fatalf("Stat dest file1 failed: %v", err)
+		}
+		if diff := destFile1Info.ModTime().Sub(pastTime); diff > 2*time.Second || diff < -2*time.Second {
+			t.Errorf("mtime mismatch: expected %v, got %v", pastTime, destFile1Info.ModTime())
+		}
+
+		// Symlink check
+		if lst, err := os.Lstat(filepath.Join(destDir, "symlink.txt")); err == nil {
+			if lst.Mode()&os.ModeSymlink != 0 {
+				if target, err := os.Readlink(filepath.Join(destDir, "symlink.txt")); err == nil {
+					t.Logf("Local disk symlink verified: symlink.txt -> %s", target)
+				}
+			}
+		}
+	})
+
+	// 2. Linux WSL Local Disk-to-Disk Sync
+	t.Run("Linux_WSL_Disk_To_Disk", func(t *testing.T) {
+		checkWSL(t)
+
+		wslSrcDir := fmt.Sprintf("/tmp/wsl_disk_src_%d", time.Now().UnixNano()%10000)
+		wslDestDir := fmt.Sprintf("/tmp/wsl_disk_dest_%d", time.Now().UnixNano()%10000)
+
+		setupScript := fmt.Sprintf(`
+mkdir -p %s/sub %s
+echo "Linux Disk-to-Disk Content" > %s/file1.txt
+chmod 0644 %s/file1.txt
+echo "#!/bin/sh\necho exec" > %s/exec.sh
+chmod 0755 %s/exec.sh
+ln -s file1.txt %s/symlink.txt
+echo "Hardlink Content" > %s/hl1.txt
+ln %s/hl1.txt %s/hl2.txt
+
+rsync -av -H %s/ %s/
+`, wslSrcDir, wslDestDir, wslSrcDir, wslSrcDir, wslSrcDir, wslSrcDir, wslSrcDir, wslSrcDir, wslSrcDir, wslSrcDir, wslSrcDir, wslDestDir)
+
+		out, err := exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", setupScript).CombinedOutput()
+		if err != nil {
+			t.Fatalf("WSL Disk-to-Disk sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		// Cleanup
+		cleanupScript := fmt.Sprintf("rm -rf %s %s", wslSrcDir, wslDestDir)
+		_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", cleanupScript).Run()
+	})
+}
+
