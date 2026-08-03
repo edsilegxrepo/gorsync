@@ -50,7 +50,7 @@ func (ms *mapStruct) ptr(offset int64, l int32) ([]byte, error) {
 	}
 
 	if offset >= ms.pOffset && offset+int64(len) <= ms.pOffset+int64(ms.pLen) {
-		//log.Printf("-> already available")
+		// log.Printf("-> already available")
 		// region already available
 		off := offset - ms.pOffset
 		return ms.window[off : off+int64(len)], nil
@@ -102,7 +102,6 @@ func (ms *mapStruct) ptr(offset int64, l int32) ([]byte, error) {
 			ms.err = err
 			// TODO: zero the buffer, file has changed mid-transfer
 			return nil, fmt.Errorf("file has changed mid-transfer")
-			break
 		}
 		ms.pFdOffset += int64(n)
 		readOffset += int64(n)

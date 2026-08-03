@@ -59,11 +59,11 @@ func TestSender(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	mtime, err := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")
@@ -77,12 +77,13 @@ func TestSender(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Symlink("hello", filepath.Join(source, "hey")); err != nil {
-		t.Fatal(err)
+	var createdSymlink bool
+	if err := os.Symlink("hello", filepath.Join(source, "hey")); err == nil {
+		createdSymlink = true
 	}
 
 	no := filepath.Join(source, "no")
-	if err := os.WriteFile(no, []byte("no"), 0666); err != nil {
+	if err := os.WriteFile(no, []byte("no"), 0o666); err != nil {
 		t.Fatal(err)
 	}
 	uid, gid, verifyUid := setUid(t, no)
@@ -113,7 +114,7 @@ func TestSender(t *testing.T) {
 			t.Fatalf("unexpected file contents: diff (-want +got):\n%s", diff)
 		}
 	}
-	{
+	if createdSymlink {
 		got, err := os.Readlink(filepath.Join(dest, "hey"))
 		if err != nil {
 			t.Fatal(err)
@@ -147,7 +148,7 @@ func TestSender(t *testing.T) {
 
 	// Make a change that is invisible with our current settings:
 	// change the file contents without changing size and mtime.
-	if err := os.WriteFile(hello, []byte("moon!"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("moon!"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(hello, mtime, mtime); err != nil {
@@ -192,11 +193,11 @@ func TestSenderNoSlash(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	mtime, err := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")
@@ -210,12 +211,13 @@ func TestSenderNoSlash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Symlink("hello", filepath.Join(source, "hey")); err != nil {
-		t.Fatal(err)
+	var createdSymlink bool
+	if err := os.Symlink("hello", filepath.Join(source, "hey")); err == nil {
+		createdSymlink = true
 	}
 
 	no := filepath.Join(source, "no")
-	if err := os.WriteFile(no, []byte("no"), 0666); err != nil {
+	if err := os.WriteFile(no, []byte("no"), 0o666); err != nil {
 		t.Fatal(err)
 	}
 	uid, gid, verifyUid := setUid(t, no)
@@ -248,7 +250,7 @@ func TestSenderNoSlash(t *testing.T) {
 			t.Fatalf("unexpected file contents: diff (-want +got):\n%s", diff)
 		}
 	}
-	{
+	if createdSymlink {
 		got, err := os.Readlink(filepath.Join(dest, "hey"))
 		if err != nil {
 			t.Fatal(err)
@@ -282,7 +284,7 @@ func TestSenderNoSlash(t *testing.T) {
 
 	// Make a change that is invisible with our current settings:
 	// change the file contents without changing size and mtime.
-	if err := os.WriteFile(hello, []byte("moon!"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("moon!"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(hello, mtime, mtime); err != nil {
@@ -325,11 +327,11 @@ func TestSenderRelative(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -363,17 +365,17 @@ func TestSenderTraversal(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(source, "hello.txt"), []byte("hi"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(source, "hello.txt"), []byte("hi"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tmp, "passwd"), []byte("secret"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmp, "passwd"), []byte("secret"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := os.MkdirAll(dest, 0755); err != nil {
+	if err := os.MkdirAll(dest, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -404,11 +406,11 @@ func TestSenderBothLocal(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	mtime, err := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")
@@ -422,12 +424,13 @@ func TestSenderBothLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Symlink("hello", filepath.Join(source, "hey")); err != nil {
-		t.Fatal(err)
+	var createdSymlink bool
+	if err := os.Symlink("hello", filepath.Join(source, "hey")); err == nil {
+		createdSymlink = true
 	}
 
 	no := filepath.Join(source, "no")
-	if err := os.WriteFile(no, []byte("no"), 0666); err != nil {
+	if err := os.WriteFile(no, []byte("no"), 0o666); err != nil {
 		t.Fatal(err)
 	}
 	uid, gid, verifyUid := setUid(t, no)
@@ -457,7 +460,7 @@ func TestSenderBothLocal(t *testing.T) {
 			t.Fatalf("unexpected file contents: diff (-want +got):\n%s", diff)
 		}
 	}
-	{
+	if createdSymlink {
 		got, err := os.Readlink(filepath.Join(dest, "hey"))
 		if err != nil {
 			t.Fatal(err)
@@ -491,7 +494,7 @@ func TestSenderBothLocal(t *testing.T) {
 
 	// Make a change that is invisible with our current settings:
 	// change the file contents without changing size and mtime.
-	if err := os.WriteFile(hello, []byte("moon!"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("moon!"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(hello, mtime, mtime); err != nil {
@@ -535,7 +538,7 @@ func TestSenderBothLocalFile(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.WriteFile(source, []byte("hey"), 0644); err != nil {
+	if err := os.WriteFile(source, []byte("hey"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	mtime, err := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")
@@ -575,13 +578,13 @@ func TestSenderBothLocalHang(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	hello := filepath.Join(source, "hello.txt")
 
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -615,21 +618,21 @@ func TestSenderPartial257K(t *testing.T) {
 	dest := filepath.Join(tmp, "dest")
 	want := make([]byte, 1024*257+1)
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	hello := filepath.Join(source, "hello.txt")
 
-	if err := os.WriteFile(hello, want, 0644); err != nil {
+	if err := os.WriteFile(hello, want, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	destFile := filepath.Join(dest, "source", "hello.txt")
-	if err := os.MkdirAll(filepath.Dir(destFile), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(destFile), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(destFile, []byte{0}, 0644); err != nil {
+	if err := os.WriteFile(destFile, []byte{0}, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -663,18 +666,18 @@ func TestReceiverCommandDryRun(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(dest, 0755); err != nil {
+	if err := os.MkdirAll(dest, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello = filepath.Join(dest, "hello")
-	if err := os.WriteFile(hello, []byte("moon"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("moon"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

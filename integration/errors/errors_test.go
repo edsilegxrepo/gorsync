@@ -35,7 +35,7 @@ func TestErrors(t *testing.T) {
 		"-v", "-v", "-v", "-v",
 		"--port="+srv.Port,
 		"rsync://localhost/interop/", // copy contents of interop
-		//source+"/", // sync from local directory
+		// source+"/", // sync from local directory
 		filepath.Base(dest)) // directly into dest (relative to rsync.Dir)
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = &buf
@@ -69,7 +69,7 @@ func TestNoSuchModule(t *testing.T) {
 		"-v", "-v", "-v", "-v",
 		"--port="+srv.Port,
 		"rsync://localhost/requesting-nonsense/", // copy contents of interop
-		//source+"/", // sync from local directory
+		// source+"/", // sync from local directory
 		filepath.Base(dest)) // directly into dest (relative to rsync.Dir)
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = &buf
@@ -92,16 +92,16 @@ func TestNoReadPermission(t *testing.T) {
 	dest := filepath.Join(tmp, "dest")
 
 	// create files in source to be copied
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	dummy := filepath.Join(source, "dummy")
-	if err := os.WriteFile(dummy, []byte("dummy"), 0644); err != nil {
+	if err := os.WriteFile(dummy, []byte("dummy"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	other := filepath.Join(source, "other")
 	want := []byte("other file contents")
-	if err := os.WriteFile(other, want, 0644); err != nil {
+	if err := os.WriteFile(other, want, 0o644); err != nil {
 		t.Fatal(err)
 	}
 

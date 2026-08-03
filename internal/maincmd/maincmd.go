@@ -102,7 +102,7 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 			roDirs = append(roDirs, paths...)
 		} else {
 			for _, path := range paths {
-				if err := os.MkdirAll(path, 0755); err != nil {
+				if err := os.MkdirAll(path, 0o755); err != nil {
 					return nil, err
 				}
 			}
@@ -247,6 +247,7 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 	if monitoringListen := opts.GokrazyDaemon.MonitoringListen; monitoringListen != "" {
 		go func() {
 			osenv.Logf("HTTP server for monitoring listening on http://%s/debug/pprof", monitoringListen)
+			// nosemgrep: go.lang.security.audit.net.use-tls.use-tls, go.lang.security.audit.net.pprof.pprof-debug-exposure
 			if err := http.ListenAndServe(monitoringListen, nil); err != nil {
 				osenv.Logf("-monitoring_listen: %v", err)
 			}

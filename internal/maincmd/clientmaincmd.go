@@ -84,7 +84,7 @@ func rsyncMain(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Options,
 	if other != "" {
 		if !opts.Sender() || opts.LocalServer() {
 			// dest is local
-			if err := os.MkdirAll(other, 0755); err != nil {
+			if err := os.MkdirAll(other, 0o755); err != nil {
 				return nil, err
 			}
 		}
@@ -94,7 +94,12 @@ func rsyncMain(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Options,
 		// source is local
 		// other = src
 		paths = sources
-		roDirs = sources
+		for _, src := range sources {
+			roDirs = append(roDirs, src)
+			if !strings.HasSuffix(src, "/") && !strings.HasSuffix(src, string(filepath.Separator)) {
+				roDirs = append(roDirs, filepath.Dir(src))
+			}
+		}
 		if opts.LocalServer() {
 			// source and dest are both local
 			rwDirs = []string{dest}
@@ -138,7 +143,7 @@ func rsyncMain(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Options,
 
 	negotiate := true
 	if daemonConnection != 0 {
-		done, err := StartInbandExchange(osenv, opts, conn, path)
+		done, err := StartInbandExchange(osenv, opts, conn, src)
 		if err != nil {
 			return nil, err
 		}
@@ -263,6 +268,16 @@ func doCmd(osenv *rsyncos.Env, opts *rsyncopts.Options, machine, user, path stri
 
 // rsync/main.c:client_run
 func ClientRun(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, paths []string, negotiate bool) (*rsyncstats.TransferStats, error) {
+	if bw := opts.BWLimit(); bw > 0 {
+		limiter := rsyncwire.NewRateLimiter(bw)
+		conn = &struct {
+			io.Reader
+			io.Writer
+		}{
+			Reader: &rsyncwire.RateLimitedReader{R: conn, Limiter: limiter},
+			Writer: &rsyncwire.RateLimitedWriter{W: conn, Limiter: limiter},
+		}
+	}
 	crd := &rsyncwire.CountingReader{R: conn}
 	cwr := &rsyncwire.CountingWriter{W: conn}
 	c := &rsyncwire.Conn{
@@ -333,7 +348,27 @@ func ClientRun(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, 
 			}
 		}
 
-		stats, err := st.Do(crd, cwr, rsync.FileSystemRoot, paths, nil)
+		filterList, err := sender.ParseFilterRules(opts.FilterRules())
+		if err != nil {
+			return nil, err
+		}
+
+		if opts.DeleteMode() {
+			for _, rule := range opts.FilterRules() {
+				if err := c.WriteInt32(int32(len(rule))); err != nil {
+					return nil, err
+				}
+				if err := c.WriteString(rule); err != nil {
+					return nil, err
+				}
+			}
+			const exclusionListEnd = 0
+			if err := c.WriteInt32(exclusionListEnd); err != nil {
+				return nil, err
+			}
+		}
+
+		stats, err := st.Do(crd, cwr, rsync.FileSystemRoot, paths, filterList)
 		if err != nil {
 			return nil, err
 		}
@@ -361,7 +396,10 @@ func ClientRun(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, 
 			PreserveTimes:     opts.PreserveMTimes(),
 			PreserveHardlinks: opts.PreserveHardLinks(),
 			IgnoreTimes:       opts.IgnoreTimes(),
+			SizeOnly:          opts.SizeOnly(),
+			TempDir:           opts.TempDir(),
 			AlwaysChecksum:    opts.AlwaysChecksum(),
+			WholeFile:         opts.WholeFile(),
 
 			InfoGTE:  opts.InfoGTE,
 			DebugGTE: opts.DebugGTE,
@@ -378,7 +416,7 @@ func ClientRun(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, 
 	if rt.Dest == "" {
 		// just listing modules, not transferring anything
 	} else {
-		if err := os.MkdirAll(rt.Dest, 0755); err != nil {
+		if err := os.MkdirAll(rt.Dest, 0o755); err != nil {
 			return nil, fmt.Errorf("MkdirAll(dest=%s): %v", rt.Dest, err)
 		}
 		rt.DestRoot, err = os.OpenRoot(rt.Dest)
@@ -394,8 +432,12 @@ func ClientRun(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, 
 	}
 
 	for _, rule := range opts.FilterRules() {
-		c.WriteInt32(int32(len(rule)))
-		c.WriteString(rule)
+		if err := c.WriteInt32(int32(len(rule))); err != nil {
+			return nil, err
+		}
+		if err := c.WriteString(rule); err != nil {
+			return nil, err
+		}
 	}
 	const exclusionListEnd = 0
 	if err := c.WriteInt32(exclusionListEnd); err != nil {
@@ -430,6 +472,7 @@ func clientMain(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Options
 	if len(remaining) == 1 {
 		// Usages with just one SRC arg and no DEST arg list the source files
 		// instead of copying.
+		opts.SetListOnly()
 		dest := ""
 		sources := remaining
 		return rsyncMain(ctx, osenv, opts, sources, dest)

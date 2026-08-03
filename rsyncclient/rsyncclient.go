@@ -8,12 +8,16 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"time"
 
 	"github.com/gokrazy/rsync/internal/maincmd"
+	"github.com/gokrazy/rsync/internal/receiver"
 	"github.com/gokrazy/rsync/internal/rsyncopts"
 	"github.com/gokrazy/rsync/internal/rsyncos"
 	"github.com/gokrazy/rsync/internal/rsyncstats"
+	"github.com/gokrazy/rsync/internal/rsyncwire"
 )
 
 // Option specifies the client options.
@@ -25,6 +29,14 @@ type clientOptionFunc func(server *Client)
 
 func (f clientOptionFunc) applyServer(s *Client) {
 	f(s)
+}
+
+// WithStdout makes the [Client] write to the specified stdout instead of
+// [os.Stdout].
+func WithStdout(stdout io.Writer) Option {
+	return clientOptionFunc(func(c *Client) {
+		c.osenv.Stdout = stdout
+	})
 }
 
 // WithStderr makes the [Client] write to the specified stderr instead of
@@ -145,4 +157,73 @@ func (c *Client) RunDaemon(ctx context.Context, conn io.ReadWriter, remotePath s
 	}
 	c.negotiate = false // done as part of the inband exchange
 	return c.Run(ctx, conn, paths)
+}
+
+// File represents a file entry returned during structured directory listing.
+type File struct {
+	Name       string
+	Length     int64
+	ModTime    time.Time
+	Mode       fs.FileMode
+	Uid        int32
+	Gid        int32
+	LinkTarget string
+}
+
+// ListFiles connects to an rsync daemon or server socket, performs authentication/handshake,
+// and returns a structured list of files without performing disk transfers.
+func (c *Client) ListFiles(ctx context.Context, conn io.ReadWriter, remotePath string) ([]*File, error) {
+	origListOnly := c.opts.ListOnlyVal()
+	origXferDirs := c.opts.XferDirs()
+	c.opts.SetListOnly()
+	defer c.opts.RestoreListOnly(origListOnly, origXferDirs)
+
+	done, err := maincmd.StartInbandExchange(c.osenv, c.opts, conn, remotePath)
+	if err != nil {
+		return nil, err
+	}
+	if done {
+		return nil, nil
+	}
+	c.negotiate = false
+
+	crd := &rsyncwire.CountingReader{R: conn}
+	cwr := &rsyncwire.CountingWriter{W: conn}
+	wireConn := &rsyncwire.Conn{Reader: crd, Writer: cwr}
+
+	// Read checksum seed sent by remote
+	seed, err := wireConn.ReadInt32()
+	if err != nil {
+		return nil, err
+	}
+
+	rt := &receiver.Transfer{
+		Opts: &receiver.TransferOpts{
+			Verbose:  c.opts.Verbose(),
+			InfoGTE:  c.opts.InfoGTE,
+			DebugGTE: c.opts.DebugGTE,
+		},
+		Env:  c.osenv,
+		Conn: wireConn,
+		Seed: seed,
+	}
+
+	rawList, err := rt.ReceiveFileList()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*File, len(rawList))
+	for i, f := range rawList {
+		result[i] = &File{
+			Name:       f.Name,
+			Length:     f.Length,
+			ModTime:    f.ModTime,
+			Mode:       f.FileMode(),
+			Uid:        f.Uid,
+			Gid:        f.Gid,
+			LinkTarget: f.LinkTarget,
+		}
+	}
+	return result, nil
 }

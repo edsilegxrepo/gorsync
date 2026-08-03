@@ -243,7 +243,7 @@ func TestDaemonReceiverDelete(t *testing.T) {
 
 	// Add more files to the destination, which should be deleted:
 	extra := filepath.Join(dest, "extrafile")
-	if err := os.WriteFile(extra, []byte("deleteme"), 0644); err != nil {
+	if err := os.WriteFile(extra, []byte("deleteme"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	run()

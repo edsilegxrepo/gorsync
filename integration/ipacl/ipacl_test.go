@@ -48,7 +48,7 @@ func TestIPACL(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 	// create files in source to be copied
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -129,7 +129,7 @@ acl = [
 				"--port="+srv.Port,
 				"--dry-run",
 				"rsync://localhost/interop/", // copy contents of interop
-				//source+"/", // sync from local directory
+				// source+"/", // sync from local directory
 				filepath.Base(dest)) // directly into dest
 			rsync.Dir = filepath.Dir(dest)
 			rsync.Stdout = testlogger.New(t)

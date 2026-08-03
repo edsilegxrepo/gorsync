@@ -7,32 +7,36 @@ import (
 	"path/filepath"
 )
 
-type pendingFile struct {
+type nativePendingFile struct {
 	fn string
 	f  *os.File
 }
 
-func newPendingFile(root *os.Root, fn string) (*pendingFile, error) {
+func newNativePendingFile(root *os.Root, fn string, tempDir string) (*nativePendingFile, error) {
 	abs := filepath.Join(root.Name(), fn)
-	f, err := os.CreateTemp(filepath.Dir(abs), "temp-rsync-*")
+	dir := tempDir
+	if dir == "" {
+		dir = filepath.Dir(abs)
+	}
+	f, err := os.CreateTemp(dir, "temp-rsync-*")
 	if err != nil {
 		return nil, err
 	}
-	return &pendingFile{
+	return &nativePendingFile{
 		fn: abs,
 		f:  f,
 	}, nil
 }
 
-func (p *pendingFile) Name() string {
+func (p *nativePendingFile) Name() string {
 	return p.fn
 }
 
-func (p *pendingFile) Write(buf []byte) (n int, _ error) {
+func (p *nativePendingFile) Write(buf []byte) (n int, _ error) {
 	return p.f.Write(buf)
 }
 
-func (p *pendingFile) CloseAtomicallyReplace() error {
+func (p *nativePendingFile) CloseAtomicallyReplace() error {
 	if err := p.f.Close(); err != nil {
 		return err
 	}
@@ -42,11 +46,8 @@ func (p *pendingFile) CloseAtomicallyReplace() error {
 	return nil
 }
 
-func (p *pendingFile) Cleanup() error {
+func (p *nativePendingFile) Cleanup() {
 	tmpName := p.f.Name()
-	err := p.f.Close()
-	if err := os.Remove(tmpName); err != nil {
-		return err
-	}
-	return err
+	_ = p.f.Close()
+	_ = os.Remove(tmpName)
 }

@@ -33,7 +33,7 @@ func genKey(privKeyPath string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(privKeyPath, asPEM(priv), 0600); err != nil {
+	if err := os.WriteFile(privKeyPath, asPEM(priv), 0o600); err != nil {
 		return err
 	}
 	return nil

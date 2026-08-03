@@ -20,7 +20,7 @@ func namespace(osenv *rsyncos.Env, modules []rsyncd.Module, listen string) error
 
 		// Expected by the go-systemd package, and hard to set before creating
 		// the process in Go.
-		os.Setenv("LISTEN_PID", strconv.Itoa(os.Getpid()))
+		_ = os.Setenv("LISTEN_PID", strconv.Itoa(os.Getpid()))
 
 		return nil
 	}

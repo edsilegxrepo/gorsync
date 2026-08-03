@@ -44,7 +44,7 @@ type fileList struct {
 // A fileList must not be used after calling Close().
 func (fl *fileList) Close() {
 	for _, source := range fl.Sources {
-		source.Close()
+		_ = source.Close()
 	}
 	fl.Sources = nil
 }
@@ -140,10 +140,12 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 	// Only ever transmit long names, like openrsync
 	flags := byte(rsync.XMIT_LONG_NAME)
 
-	name := path
-	if s.strip != "" {
-		name = strings.TrimPrefix(name, s.strip)
+	name := filepath.ToSlash(path)
+	strip := filepath.ToSlash(s.strip)
+	if strip != "" {
+		name = strings.TrimPrefix(name, strip)
 	}
+	name = strings.TrimPrefix(name, "/")
 	if opts.DebugGTE(rsyncopts.DEBUG_FLIST, 1) {
 		logger.Printf("Trim(path=%q) = %q", path, name)
 	}
@@ -153,7 +155,10 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 	// st.logger.Printf("flags for %q: %v", name, flags)
 
 	if s.excl.matches(name) {
-		return filepath.SkipDir
+		if info.IsDir() {
+			return filepath.SkipDir
+		}
+		return nil
 	}
 
 	s.fileList.Files = append(s.fileList.Files, file{
@@ -289,7 +294,7 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 				return err
 			}
 			checksum, err = rsyncchecksum.ReaderChecksum(f)
-			f.Close()
+			_ = f.Close()
 			if err != nil {
 				return err
 			}
@@ -299,7 +304,9 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 		s.fec.WriteString(string(checksum))
 	}
 
-	s.conn.WriteString(s.fec.String())
+	if err := s.conn.WriteString(s.fec.String()); err != nil {
+		return err
+	}
 
 	// The status byte may consist of the following bits and determines which of the optional fields are transmitted.
 
@@ -353,7 +360,6 @@ func (st *Transfer) SendFileList(localDir string, paths []string, excl *filterRu
 		if local == rsync.FileSystemRoot {
 			// Implicit module (/) and absolute requested path (/tmp/foo/),
 			// turn the path into the local directory and request /.
-			local = requested
 			if strings.HasSuffix(requested, "/") {
 				local = filepath.Clean(requested)
 				requested = "/"

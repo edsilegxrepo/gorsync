@@ -9,7 +9,7 @@ import (
 )
 
 func Tag2(s1, s2 uint16) uint16 {
-	return (((s1) + (s2)) & 0xFFFF)
+	return ((s1 + s2) & 0xFFFF)
 }
 
 func Tag(sum uint32) uint16 {
@@ -53,7 +53,7 @@ func Checksum1(buf []byte) uint32 {
 func Checksum2(seed int32, buf []byte) []byte {
 	h := md4.New()
 	h.Write(buf)
-	binary.Write(h, binary.LittleEndian, seed)
+	_ = binary.Write(h, binary.LittleEndian, seed)
 	return h.Sum(nil)
 }
 

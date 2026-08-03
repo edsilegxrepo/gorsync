@@ -47,4 +47,4 @@ type Transfer struct {
 	lastMatch int64
 }
 
-//func (rt *Transfer) listOnly() bool { return rt.Dest == "" }
+// func (rt *Transfer) listOnly() bool { return rt.Dest == "" }

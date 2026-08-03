@@ -1,0 +1,34 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [v0.3.5] - 2026-08-03
+
+### Added
+- **Sender `--delete` & Filter Support**: Added full support for `--delete`, `--delete-excluded`, `--exclude`, `--include`, and `--filter` flags when pushing files as a client sender.
+- **Wildcard Pattern Matching**: Implemented `wildmatch` (`*`, `**`, `?`, `[...]` character classes) for rsync filter rules in [internal/sender/exclude.go](internal/sender/exclude.go).
+- **Rsync Daemon Protocol Authentication**:
+  - Implemented MD4 challenge-response authentication for `rsync://` client connections and `gokr-rsyncd` server modules.
+  - Added support for password sources: `rsync://user:pass@host/module` URLs, `--password-file`, and `RSYNC_PASSWORD` environment variable.
+  - Added `AuthUsers` and `SecretsFile` fields to `rsyncd.Module` in [rsyncd/rsyncd.go](rsyncd/rsyncd.go).
+- **Whole-File Transfer Mode (`-W`)**: Added end-to-end support for `--whole-file`/`-W` flags to bypass rolling checksum generation on fast/local transfers in [internal/receiver/generator.go](internal/receiver/generator.go).
+- **Daemon Directory Listing Mode (PR #56)**: Added daemon list-only directory mode (`SetListOnly`) and `-d` (`--dirs`) flag support in [internal/maincmd/clientmaincmd.go](internal/maincmd/clientmaincmd.go) and [internal/rsyncopts/serveroptions.go](internal/rsyncopts/serveroptions.go) for querying remote `rsync://` modules.
+- **I/O Timeout & Tarpit Protection (`--timeout`)**: Added `--timeout` socket I/O deadline wrapper (`TimeoutConn`) in [internal/maincmd/clientserver.go](internal/maincmd/clientserver.go) to protect clients and servers against network stalls.
+- **Bandwidth Rate Limiting (`--bwlimit`)**: Added token-bucket bandwidth rate limiter (`RateLimiter`) in [internal/rsyncwire/ratelimit.go](internal/rsyncwire/ratelimit.go) to support `--bwlimit=RATE` (in KiB/s) throttling on transfers.
+- **Fast Size-Only Mode (`--size-only`)**: Added support for `--size-only` flag to bypass timestamp comparisons and skip transfers whenever file sizes match in [internal/receiver/generator.go](internal/receiver/generator.go).
+- **Structured Directory Listing API (Issue #64)**: Added `Client.ListFiles()` and `rsyncclient.File` struct in [rsyncclient/rsyncclient.go](rsyncclient/rsyncclient.go), allowing programmatic retrieval of structured Go file objects from remote rsync daemons without performing disk I/O or parsing text output.
+- **Writable Virtual Filesystem Interface (`WritableFS`) (Issue #8)**: Introduced `rsync.WritableFS` interface in [writablefs.go](writablefs.go) and added `WritableFS` support to `rsyncd.Module` and `receiver.TransferOpts`, enabling pure Go in-memory or cloud storage (S3/GCS/Database) upload targets without physical disk access.
+- **Staged Temporary Directory (`--temp-dir` / `-T`)**: Added support for `--temp-dir=DIR` (`-T`) in [internal/receiver/receiverrenameio.go](internal/receiver/receiverrenameio.go) to stage partial incoming transfers in an isolated directory.
+- **Hardlink Preservation (`-H` / `--hard-links`)**: Added hardlink preservation support (`PreserveHardlinks`) in [rsyncd/rsyncd.go](rsyncd/rsyncd.go) and [internal/maincmd/clientmaincmd.go](internal/maincmd/clientmaincmd.go).
+- **Cross-Platform Interoperability Matrix & WSL 2 Integration Suite**: Added end-to-end matrix test suite in [integration/interop/matrix_e2e_test.go](integration/interop/matrix_e2e_test.go) and [integration/interop/wsl_e2e_test.go](integration/interop/wsl_e2e_test.go) validating all 4 dataflow topologies (`Win Client -> Win Server`, `Linux Client -> Linux Server`, `Win Client -> Linux Server`, `Linux Client -> Win Server`) across flags, symlinks, hardlinks, executable modes (`0755`), daemon authentication, chroot sandboxing, and high-volume stress testing.
+
+### Fixed
+- **Non-Fatal Error Handling**: Fixed multiplex stream handling in [internal/rsyncwire/wire.go](internal/rsyncwire/wire.go) to treat `MsgErrorXfer` (1), `MsgError` (3), `MsgWarning` (4), and `MsgLog` (6) as non-fatal warnings rather than aborting the entire session.
+- **Regular File Exclusion Fix**: Fixed file list walking in [internal/sender/flist.go](internal/sender/flist.go) so excluding a regular file skips only that file rather than dropping sibling entries in the parent directory.
+- **Windows Subdirectory Receiver Fix**: Normalized subdirectory path separators and trimmed trailing slashes in [rsyncd/rsyncd.go](rsyncd/rsyncd.go), fixing receiver subdirectory creation on Windows.
+- **Landlock ACL Named-Directory Fix (Issue #66)**: Automatically included parent directories in `roDirs` for sources without trailing slashes in [internal/maincmd/clientmaincmd.go](internal/maincmd/clientmaincmd.go), preventing `OpenRoot` permission denied errors under Landlock.
+- **Daemon Path Jail Enforcement (Issue #48)**: Integrated `os.OpenRoot` jail enforcement in [rsyncd/rsyncd.go](rsyncd/rsyncd.go) to strictly isolate module roots and reject `..` parent directory traversal attempts.
+- **Windows Path Normalization Fix (Issue #30)**: Normalized Windows file list paths using `filepath.ToSlash()` in [internal/sender/flist.go](internal/sender/flist.go), preventing absolute Windows paths (`C:\Users\...`) from leaking into remote wire transmissions.

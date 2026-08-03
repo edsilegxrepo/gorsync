@@ -108,12 +108,12 @@ func (p *Printer) Show(offset uint64, last bool) {
 	if p.first {
 		p.first = false
 	} else {
-		p.out.Write([]byte{'\r'})
+		_, _ = p.out.Write([]byte{'\r'})
 	}
 	fmt.Fprintf(p.out, "%15d %3d%% %7.2f%s %s", offset, pct, rate, unit, remaining)
 	if last {
 		// TODO: show where we are within the file list
 		// (number of files transferred vs. number of files total)
-		p.out.Write([]byte{'\n'})
+		_, _ = p.out.Write([]byte{'\n'})
 	}
 }

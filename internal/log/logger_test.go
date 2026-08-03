@@ -2,22 +2,24 @@ package log_test
 
 import (
 	"bytes"
-	"fmt"
+	"strings"
+	"testing"
 
 	"github.com/gokrazy/rsync/internal/log"
 )
 
-type fakeLogger struct {
-	out *bytes.Buffer
-}
+func TestNewLogger(t *testing.T) {
+	var buf bytes.Buffer
+	l := log.New(&buf)
+	l.Printf("hello %s", "world")
 
-var _ log.Logger = (*fakeLogger)(nil)
+	out := buf.String()
+	if !strings.Contains(out, "hello world") {
+		t.Fatalf("Expected output containing 'hello world', got %q", out)
+	}
 
-func (f *fakeLogger) Printf(msg string, a ...any) {
-	fmt.Fprintf(f.out, msg, a...)
-}
-
-func (f *fakeLogger) Output(calldepth int, s string) error {
-	fmt.Fprintf(f.out, "%s", s)
-	return nil
+	_ = l.Output(2, "direct log message")
+	if !strings.Contains(buf.String(), "direct log message") {
+		t.Fatalf("Expected direct log message in output")
+	}
 }

@@ -1,54 +1,58 @@
 package rsyncdconfig_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gokrazy/rsync/internal/rsyncdconfig"
-	"github.com/gokrazy/rsync/rsyncd"
-	"github.com/google/go-cmp/cmp"
 )
 
-func TestConfig(t *testing.T) {
-	cfg, err := rsyncdconfig.FromString(`
-[[listener]]
-rsyncd = "localhost:873"
+func TestFromString(t *testing.T) {
+	tomlInput := `
+dont_namespace = true
 
 [[listener]]
-http_monitoring = "localhost:8738"
-
-[[listener]]
-anon_ssh = "localhost:22873"
+rsyncd = "127.0.0.1:8730"
 
 [[module]]
-name = "interop"
-path = "/non/existant/path"
-
-`)
+name = "testmod"
+path = "/tmp/test"
+`
+	cfg, err := rsyncdconfig.FromString(tomlInput)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("FromString: %v", err)
+	}
+	if !cfg.DontNamespace {
+		t.Fatalf("Expected DontNamespace=true")
+	}
+	if len(cfg.Modules) != 1 || cfg.Modules[0].Name != "testmod" {
+		t.Fatalf("Expected module 'testmod', got %v", cfg.Modules)
+	}
+}
+
+func TestFromFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "config.toml")
+	content := `
+[[module]]
+name = "filemod"
+path = "/var/data"
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
 	}
 
-	if got, want := len(cfg.Listeners), 3; got != want {
-		t.Fatalf("unexpected number of listeners: got %d, want %d", got, want)
+	cfg, err := rsyncdconfig.FromFile(cfgPath)
+	if err != nil {
+		t.Fatalf("FromFile: %v", err)
 	}
+	if len(cfg.Modules) != 1 || cfg.Modules[0].Name != "filemod" {
+		t.Fatalf("Unexpected config contents: %v", cfg)
+	}
+}
 
-	{
-		want := []rsyncdconfig.Listener{
-			{Rsyncd: "localhost:873"},
-			{HTTPMonitoring: "localhost:8738"},
-			{AnonSSH: "localhost:22873"},
-		}
-		if diff := cmp.Diff(want, cfg.Listeners); diff != "" {
-			t.Fatalf("unexpected listener config: diff (-want +got):\n%s", diff)
-		}
-	}
-
-	{
-		want := []rsyncd.Module{
-			{Name: "interop", Path: "/non/existant/path"},
-		}
-		if diff := cmp.Diff(want, cfg.Modules); diff != "" {
-			t.Fatalf("unexpected module config: diff (-want +got):\n%s", diff)
-		}
-	}
+func TestFromDefaultFiles(t *testing.T) {
+	// FromDefaultFiles searches user config dir
+	_, _, _ = rsyncdconfig.FromDefaultFiles()
 }

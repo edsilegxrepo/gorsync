@@ -25,7 +25,7 @@ func New(tb testing.TB) *Logger {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	tb.Cleanup(func() {
-		w.Close()
+		_ = w.Close()
 		// tl.scanner.Scan() will return false,
 		// tl.scanner.Err() will return nil.
 

@@ -21,10 +21,10 @@ func writeLargeDataFile(t *testing.T, source string, headPattern, bodyPattern, e
 	// create large data file in source directory to be copied
 	content := constructLargeDataFile(headPattern, bodyPattern, endPattern)
 	large := filepath.Join(source, "large-data-file")
-	if err := os.MkdirAll(filepath.Dir(large), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(large), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(large, content, 0644); err != nil {
+	if err := os.WriteFile(large, content, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -69,5 +69,44 @@ func TestSyncExtended(t *testing.T) {
 		if sum != wantChecksum {
 			t.Fatalf("checksum calculation error: got %08x, want %08x (idx %d), chunk: %#v", sum, wantChecksum, idx, chunk)
 		}
+	}
+}
+
+func TestChecksumHelpers(t *testing.T) {
+	tag := rsyncchecksum.Tag(0x12345678)
+	if tag == 0 {
+		t.Fatalf("Tag returned 0")
+	}
+
+	se := rsyncchecksum.SignExtend(0x80)
+	if se == 0 {
+		t.Fatalf("SignExtend returned 0")
+	}
+
+	c2 := rsyncchecksum.Checksum2(1234, []byte("data"))
+	if len(c2) == 0 {
+		t.Fatalf("Checksum2 empty")
+	}
+
+	rSum, err := rsyncchecksum.ReaderChecksum(bytes.NewReader([]byte("test")))
+	if err != nil || len(rSum) == 0 {
+		t.Fatalf("ReaderChecksum: %v", err)
+	}
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "file.txt")
+	if err := os.WriteFile(testFile, []byte("hello"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	root, err := os.OpenRoot(tmpDir)
+	if err != nil {
+		t.Fatalf("OpenRoot: %v", err)
+	}
+	defer root.Close()
+
+	rootSum, err := rsyncchecksum.RootChecksum(root, "file.txt")
+	if err != nil || len(rootSum) == 0 {
+		t.Fatalf("RootChecksum: %v", err)
 	}
 }

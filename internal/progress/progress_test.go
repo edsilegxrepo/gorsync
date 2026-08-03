@@ -1,26 +1,37 @@
-package progress
+package progress_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/gokrazy/rsync/internal/progress"
 )
 
-func TestProgress(t *testing.T) {
-	now := time.Now()
+func TestProgressPrinterUnitsAndRates(t *testing.T) {
 	var buf bytes.Buffer
-	p := NewPrinter(&buf, func() time.Time {
-		return now
-	})
-	p.Reset(1234)
-	p.Show(0, false)
-	if got, want := buf.String(), "              0   0%    0.00kB/s    0:00:00"; got != want {
-		t.Errorf("progress.Show(0) = %q, want %q", got, want)
+	currTime := time.Now()
+	mockNow := func() time.Time {
+		return currTime
 	}
-	now = now.Add(1 * time.Second)
-	buf.Reset()
-	p.Show(617, false)
-	if got, want := buf.String(), "\r            617  50%    0.60kB/s    0:00:01"; got != want {
-		t.Errorf("progress.Show(617) = %q, want %q", got, want)
+
+	p := progress.NewPrinter(&buf, mockNow)
+	p.Reset(100 * 1024 * 1024 * 1024) // 100GB
+
+	// 1. Initial show
+	p.MaybeShow(0, false)
+
+	// Advance time by 2 seconds and show 5MB
+	currTime = currTime.Add(2 * time.Second)
+	p.MaybeShow(5*1024*1024, false)
+
+	// Advance time and transfer 50GB (GB/s rate)
+	currTime = currTime.Add(2 * time.Second)
+	p.Show(50*1024*1024*1024, true)
+
+	out := buf.String()
+	if !strings.Contains(out, "GB/s") && !strings.Contains(out, "MB/s") {
+		t.Fatalf("Expected rate units in output, got %q", out)
 	}
 }

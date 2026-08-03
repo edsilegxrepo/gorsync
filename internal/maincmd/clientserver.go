@@ -19,14 +19,18 @@ import (
 
 // rsync/clientserver.c:start_socket_client
 func socketClient(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Options, host string, remotePath string, port int, paths []string, roDirs, rwDirs []string) (*rsyncstats.TransferStats, error) {
+	dialHost := host
+	if idx := strings.IndexByte(dialHost, '@'); idx > -1 {
+		dialHost = dialHost[idx+1:]
+	}
 	if port < 0 {
 		if port := opts.RsyncPort(); port > 0 {
-			host += ":" + strconv.Itoa(port)
+			dialHost += ":" + strconv.Itoa(port)
 		} else {
-			host += ":873" // rsync daemon port
+			dialHost += ":873" // rsync daemon port
 		}
 	} else {
-		host += ":" + strconv.Itoa(port)
+		dialHost += ":" + strconv.Itoa(port)
 	}
 	dialer := net.Dialer{
 		// Prefer the Go resolver: We know which files it uses (which makes life
@@ -44,29 +48,41 @@ func socketClient(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Optio
 	dialFn := dialer.DialContext
 	if osenv.DialContext != nil {
 		dialFn = osenv.DialContext
-		osenv.Logf("Opening TCP connection to %s%s (via custom DialContext)", host, timeoutStr)
+		osenv.Logf("Opening TCP connection to %s%s (via custom DialContext)", dialHost, timeoutStr)
 	} else {
-		osenv.Logf("Opening TCP connection to %s%s", host, timeoutStr)
+		osenv.Logf("Opening TCP connection to %s%s", dialHost, timeoutStr)
 	}
-	conn, err := dialFn(ctx, "tcp", host)
+	conn, err := dialFn(ctx, "tcp", dialHost)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
+
+	var ioConn io.ReadWriter = conn
+	if timeout := opts.IOTimeoutSeconds(); timeout > 0 {
+		ioConn = &TimeoutConn{
+			Conn:    conn,
+			Timeout: time.Duration(timeout) * time.Second,
+		}
+	}
 
 	if osenv.Restrict() {
 		if err := restrict.MaybeFileSystem(roDirs, rwDirs); err != nil {
 			return nil, err
 		}
 	}
-	done, err := StartInbandExchange(osenv, opts, conn, remotePath)
+	fullPath := remotePath
+	if idx := strings.IndexByte(host, '@'); idx > -1 {
+		fullPath = host[:idx] + "@" + remotePath
+	}
+	done, err := StartInbandExchange(osenv, opts, ioConn, fullPath)
 	if err != nil {
 		return nil, err
 	}
 	if done {
 		return nil, nil
 	}
-	stats, err := ClientRun(osenv, opts, conn, paths, false)
+	stats, err := ClientRun(osenv, opts, ioConn, paths, false)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +91,17 @@ func socketClient(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Optio
 
 // rsync/clientserver.c:start_inband_exchange
 func StartInbandExchange(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, remotePath string) (done bool, _ error) {
+	urlUser, urlPass := extractUserPass(remotePath)
 	module := remotePath
+	if idx := strings.IndexByte(module, '@'); idx > -1 {
+		module = module[idx+1:]
+	}
+	if idx := strings.Index(module, "://"); idx > -1 {
+		module = module[idx+3:]
+		if at := strings.IndexByte(module, '/'); at > -1 {
+			module = module[at+1:]
+		}
+	}
 	if idx := strings.IndexByte(module, '/'); idx > -1 {
 		module = module[:idx]
 	}
@@ -126,8 +152,15 @@ func StartInbandExchange(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.Re
 		}
 
 		if strings.HasPrefix(line, "@RSYNCD: AUTHREQD ") {
-			// TODO: implement support for authentication
-			return false, fmt.Errorf("authentication not yet implemented")
+			challenge := strings.TrimPrefix(line, "@RSYNCD: AUTHREQD ")
+			user := resolveUsername(urlUser)
+			pass, err := getPassword(opts, urlPass)
+			if err != nil {
+				return false, fmt.Errorf("auth error: %v", err)
+			}
+			hash := generateAuthHash(pass, challenge)
+			fmt.Fprintf(conn, "%s %s\n", user, hash)
+			continue
 		}
 
 		if line == "@RSYNCD: OK" {
@@ -161,4 +194,23 @@ func StartInbandExchange(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.Re
 	fmt.Fprintf(conn, "\n")
 
 	return false, nil
+}
+
+type TimeoutConn struct {
+	net.Conn
+	Timeout time.Duration
+}
+
+func (c *TimeoutConn) Read(b []byte) (int, error) {
+	if c.Timeout > 0 {
+		_ = c.SetReadDeadline(time.Now().Add(c.Timeout))
+	}
+	return c.Conn.Read(b)
+}
+
+func (c *TimeoutConn) Write(b []byte) (int, error) {
+	if c.Timeout > 0 {
+		_ = c.SetWriteDeadline(time.Now().Add(c.Timeout))
+	}
+	return c.Conn.Write(b)
 }

@@ -61,7 +61,9 @@ func (rt *Transfer) recvFile1(f *File) error {
 	if err != nil && !os.IsNotExist(err) {
 		rt.Logger.Printf("opening local file failed, continuing: %v", err)
 	}
-	defer localFile.Close()
+	if localFile != nil {
+		defer localFile.Close()
+	}
 	if err := rt.receiveData(f, localFile); err != nil {
 		return err
 	}
@@ -69,6 +71,9 @@ func (rt *Transfer) recvFile1(f *File) error {
 }
 
 func (rt *Transfer) openLocalFile(f *File) (*os.File, error) {
+	if (rt.Opts != nil && rt.Opts.WritableFS != nil) || rt.DestRoot == nil {
+		return nil, nil
+	}
 	in, err := rt.DestRoot.Open(f.Name)
 	if err != nil {
 		return nil, err
@@ -108,14 +113,16 @@ func (rt *Transfer) receiveData(f *File, localFile *os.File) error {
 		local := filepath.Join(rt.Dest, f.Name)
 		rt.Logger.Printf("creating %s", local)
 	}
-	out, err := newPendingFile(rt.DestRoot, f.Name)
+	out, err := newPendingFile(rt, f.Name)
 	if err != nil {
 		return err
 	}
 	defer out.Cleanup()
 
 	h := md4.New()
-	binary.Write(h, binary.LittleEndian, rt.Seed)
+	if err := binary.Write(h, binary.LittleEndian, rt.Seed); err != nil {
+		return err
+	}
 
 	wr := io.MultiWriter(out, h)
 
@@ -180,7 +187,7 @@ func (rt *Transfer) receiveData(f *File, localFile *os.File) error {
 		// Close the file earlier than the calling function’s deferred Close(),
 		// so that we can rename files on Windows, which fails as long
 		// as there are any open file handles.
-		localFile.Close()
+		_ = localFile.Close()
 	}
 
 	if err := out.CloseAtomicallyReplace(); err != nil {

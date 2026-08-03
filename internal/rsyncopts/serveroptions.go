@@ -1,5 +1,7 @@
 package rsyncopts
 
+import "fmt"
+
 func (o *Options) CommandOptions(path string, paths ...string) []string {
 	return append(o.ServerOptions(), append([]string{".", path}, paths...)...)
 }
@@ -46,8 +48,9 @@ func (o *Options) ServerOptions() []string {
 	// if (copy_links)
 	// 	argstr[x++] = 'L';
 
-	// if (whole_file > 0)
-	// 	argstr[x++] = 'W';
+	if o.whole_file > 0 {
+		argstr += "W"
+	}
 	// /* We don't need to send --no-whole-file, because it's the
 	//  * default for remote transfers, and in any case old versions
 	//  * of rsync will not understand it. */
@@ -80,6 +83,9 @@ func (o *Options) ServerOptions() []string {
 	if o.IgnoreTimes() {
 		argstr += "I"
 	}
+	if o.SizeOnly() {
+		sargv = append(sargv, "--size-only")
+	}
 	// if (relative_paths)
 	// 	argstr[x++] = 'R';
 	// if (one_file_system)
@@ -89,12 +95,9 @@ func (o *Options) ServerOptions() []string {
 	// if (do_compression)
 	// 	argstr[x++] = 'z';
 
-	// /* this is a complete hack - blame Rusty
-
-	//    this is a hack to make the list_only (remote file list)
-	//    more useful */
-	// if (list_only && !recurse)
-	// 	argstr[x++] = 'r';
+	if o.xfer_dirs > 0 && !o.Recurse() {
+		argstr += "d"
+	}
 
 	// argstr[x] = 0;
 
@@ -121,17 +124,17 @@ func (o *Options) ServerOptions() []string {
 	// 	args[ac++] = arg;
 	// }
 
-	// if (io_timeout) {
-	// 	if (asprintf(&arg, "--timeout=%d", io_timeout) < 0)
-	// 		goto oom;
-	// 	args[ac++] = arg;
-	// }
+	if o.io_timeout > 0 {
+		sargv = append(sargv, fmt.Sprintf("--timeout=%d", o.io_timeout))
+	}
 
-	// if (bwlimit) {
-	// 	if (asprintf(&arg, "--bwlimit=%d", bwlimit) < 0)
-	// 		goto oom;
-	// 	args[ac++] = arg;
-	// }
+	if o.bwlimit > 0 {
+		sargv = append(sargv, fmt.Sprintf("--bwlimit=%d", o.bwlimit))
+	}
+
+	if o.tmpdir != "" {
+		sargv = append(sargv, fmt.Sprintf("--temp-dir=%s", o.tmpdir))
+	}
 
 	// if (backup_dir) {
 	// 	args[ac++] = "--backup-dir";
@@ -146,10 +149,11 @@ func (o *Options) ServerOptions() []string {
 	// 	args[ac++] = arg;
 	// }
 
-	// if (delete_excluded)
-	// 	args[ac++] = "--delete-excluded";
-	// else if (delete_mode)
-	// 	args[ac++] = "--delete";
+	if o.DeleteExcluded() {
+		sargv = append(sargv, "--delete-excluded")
+	} else if o.DeleteMode() {
+		sargv = append(sargv, "--delete")
+	}
 
 	// if (size_only)
 	// 	args[ac++] = "--size-only";

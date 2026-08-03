@@ -5,14 +5,23 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/gokrazy/rsync/internal/rsyncos"
 )
 
+// Multiplex message tags, mirroring rsync.h's MSG_* constants. MSG_ERROR_XFER
+// (1) and MSG_ERROR (3) are non-fatal logging messages from the peer in real
+// rsync — losing one file's stat is not a reason to abort the whole transfer.
+// MSG_ERROR_SOCKET (5) is a peer-side socket-level error and is fatal.
 const (
-	MsgData  uint8 = 0
-	MsgInfo  uint8 = 2
-	MsgError uint8 = 1
+	MsgData        uint8 = 0
+	MsgErrorXfer   uint8 = 1
+	MsgInfo        uint8 = 2
+	MsgError       uint8 = 3
+	MsgWarning     uint8 = 4
+	MsgErrorSocket uint8 = 5
+	MsgLog         uint8 = 6
 )
 
 const mplexBase = 7
@@ -43,8 +52,10 @@ type MultiplexReader struct {
 // rsync.h defines IO_BUFFER_SIZE as 32 * 1024, but gokr-rsyncd increases it to
 // 256K. Since we use this as the maximum message size, too, we need to at least
 // match it.
-const ioBufferSize = 256 * 1024
-const maxMessageSize = ioBufferSize
+const (
+	ioBufferSize   = 256 * 1024
+	maxMessageSize = ioBufferSize
+)
 
 func (w *MultiplexReader) ReadMsg() (tag uint8, p []byte, err error) {
 	var header uint32
@@ -75,12 +86,20 @@ func (w *MultiplexReader) Read(p []byte) (n int, err error) {
 		return 0, err
 	}
 	switch tag {
-	case MsgError:
-		return 0, fmt.Errorf("%s", payload)
-	case MsgInfo:
-		w.Env.Logf("info: %s", payload)
+	case MsgErrorXfer, MsgError, MsgWarning, MsgLog:
+		if w.Env != nil {
+			w.Env.Logf("rsync: %s", strings.TrimRight(string(payload), "\n"))
+		}
 		// io.ReadFull will call Read again
 		return 0, nil
+	case MsgInfo:
+		if w.Env != nil {
+			w.Env.Logf("info: %s", payload)
+		}
+		// io.ReadFull will call Read again
+		return 0, nil
+	case MsgErrorSocket:
+		return 0, fmt.Errorf("rsync socket error: %s", strings.TrimRight(string(payload), "\n"))
 	case MsgData:
 		// continues below
 	default:
@@ -98,11 +117,11 @@ type Buffer struct {
 }
 
 func (b *Buffer) WriteByte(data byte) {
-	binary.Write(&b.buf, binary.LittleEndian, data)
+	_ = binary.Write(&b.buf, binary.LittleEndian, data)
 }
 
 func (b *Buffer) WriteInt32(data int32) {
-	binary.Write(&b.buf, binary.LittleEndian, data)
+	_ = binary.Write(&b.buf, binary.LittleEndian, data)
 }
 
 func (b *Buffer) WriteInt64(data int64) {
@@ -113,11 +132,11 @@ func (b *Buffer) WriteInt64(data int64) {
 	}
 	// otherwise, send -1 followed by the 64-bit integer
 	b.WriteInt32(-1)
-	binary.Write(&b.buf, binary.LittleEndian, data)
+	_ = binary.Write(&b.buf, binary.LittleEndian, data)
 }
 
 func (b *Buffer) WriteString(data string) {
-	io.WriteString(&b.buf, data)
+	_, _ = io.WriteString(&b.buf, data)
 }
 
 func (b *Buffer) String() string {

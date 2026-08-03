@@ -60,23 +60,23 @@ func TestReceiver(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	sourcesub := filepath.Join(source, "subdir")
-	if err := os.MkdirAll(sourcesub, 0755); err != nil {
+	if err := os.MkdirAll(sourcesub, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	sourcesubempty := filepath.Join(source, "subdirempty")
-	if err := os.MkdirAll(sourcesubempty, 0755); err != nil {
+	if err := os.MkdirAll(sourcesubempty, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	hellosub := filepath.Join(sourcesub, "hello")
-	if err := os.WriteFile(hellosub, []byte("space"), 0644); err != nil {
+	if err := os.WriteFile(hellosub, []byte("space"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	mtime, err := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")
@@ -96,12 +96,13 @@ func TestReceiver(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Symlink("hello", filepath.Join(source, "hey")); err != nil {
-		t.Fatal(err)
+	var createdSymlink bool
+	if err := os.Symlink("hello", filepath.Join(source, "hey")); err == nil {
+		createdSymlink = true
 	}
 
 	no := filepath.Join(source, "no")
-	if err := os.WriteFile(no, []byte("no"), 0666); err != nil {
+	if err := os.WriteFile(no, []byte("no"), 0o666); err != nil {
 		t.Fatal(err)
 	}
 	uid, gid, verifyUid := setUid(t, no)
@@ -129,7 +130,7 @@ func TestReceiver(t *testing.T) {
 			t.Fatalf("unexpected file contents: diff (-want +got):\n%s", diff)
 		}
 	}
-	{
+	if createdSymlink {
 		got, err := os.Readlink(filepath.Join(dest, "hey"))
 		if err != nil {
 			t.Fatal(err)
@@ -181,7 +182,7 @@ func TestReceiver(t *testing.T) {
 
 	// Make a change that is invisible with our current settings:
 	// change the file contents without changing size and mtime.
-	if err := os.WriteFile(hello, []byte("moon!"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("moon!"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(hello, mtime, mtime); err != nil {
@@ -285,15 +286,15 @@ func TestReceiverSyncDelete(t *testing.T) {
 
 	// Add more files to the destination, which should be deleted:
 	extra := filepath.Join(dest, "extrafile")
-	if err := os.WriteFile(extra, []byte("deleteme"), 0644); err != nil {
+	if err := os.WriteFile(extra, []byte("deleteme"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	extraDir := filepath.Join(dest, "extradir")
-	if err := os.MkdirAll(extraDir, 0755); err != nil {
+	if err := os.MkdirAll(extraDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	extra2 := filepath.Join(extraDir, "blocker")
-	if err := os.WriteFile(extra2, []byte("deleteme"), 0644); err != nil {
+	if err := os.WriteFile(extra2, []byte("deleteme"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -311,11 +312,11 @@ func TestReceiverAlwaysChecksum(t *testing.T) {
 	tmp := t.TempDir()
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello.txt")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	mtime, err := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")
@@ -348,7 +349,7 @@ func TestReceiverAlwaysChecksum(t *testing.T) {
 
 	// Make a change that is invisible with our current settings:
 	// change the file contents without changing size and mtime.
-	if err := os.WriteFile(hello, []byte("moon!"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("moon!"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(hello, mtime, mtime); err != nil {
@@ -376,11 +377,15 @@ func TestReceiverReadOnlyDir(t *testing.T) {
 	tmp := t.TempDir()
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
-	if err := os.MkdirAll(source, 0755); err != nil {
+	defer func() {
+		_ = os.Chmod(source, 0o755)
+		_ = os.Chmod(dest, 0o755)
+	}()
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello.txt")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(source, 0o555); err != nil {
@@ -423,7 +428,7 @@ func TestReceiverReadOnlyDir(t *testing.T) {
 
 	// Make a change that is invisible with our current settings:
 	// change the file contents without changing size and mtime.
-	if err := os.WriteFile(hello, []byte("moon!"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("moon!"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(hello, mtime, mtime); err != nil {
@@ -453,10 +458,10 @@ func TestReceiverReadOnlyDir(t *testing.T) {
 	}
 
 	// Restore write permission so that t.TempDir() cleanup succeeds
-	if err := os.Chmod(dest, 0755); err != nil {
+	if err := os.Chmod(dest, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(source, 0755); err != nil {
+	if err := os.Chmod(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -470,10 +475,10 @@ func TestReceiverSSH(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(source, "hello"), []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(source, "hello"), []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -515,10 +520,10 @@ func TestReceiverCommand(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(source, "hello"), []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(source, "hello"), []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -537,25 +542,25 @@ func TestReceiverSymlinkTraversal(t *testing.T) {
 	t.Parallel()
 
 	tmp := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tmp, "passwd"), []byte("secret"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmp, "passwd"), []byte("secret"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	source := filepath.Join(tmp, "source")
 	dest := filepath.Join(tmp, "dest")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "passwd")
-	if err := os.WriteFile(hello, []byte("benign"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("benign"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	subdir := filepath.Join(source, "dir")
-	if err := os.MkdirAll(subdir, 0755); err != nil {
+	if err := os.MkdirAll(subdir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	subhello := filepath.Join(subdir, "passwd")
-	if err := os.WriteFile(subhello, []byte("benign"), 0644); err != nil {
+	if err := os.WriteFile(subhello, []byte("benign"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

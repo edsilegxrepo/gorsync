@@ -87,7 +87,9 @@ func (rt *Transfer) skipFile(f *File, st os.FileInfo) (bool, error) {
 		return bytes.Equal(f.Checksum[:], checksum[:]), nil
 	}
 
-	// TODO: size only
+	if rt.Opts.SizeOnly {
+		return true, nil
+	}
 
 	if rt.Opts.IgnoreTimes {
 		return false, nil
@@ -108,8 +110,17 @@ func (rt *Transfer) setPerms(f *File, mode fs.FileMode) error {
 		return nil
 	}
 
-	st, err := rt.DestRoot.Lstat(f.Name)
+	var st fs.FileInfo
+	var err error
+	if rt.Opts != nil && rt.Opts.WritableFS != nil {
+		st, err = fs.Stat(rt.Opts.WritableFS, f.Name)
+	} else if rt.DestRoot != nil {
+		st, err = rt.DestRoot.Lstat(f.Name)
+	}
 	if err != nil {
+		if rt.Opts != nil && rt.Opts.WritableFS != nil {
+			return nil
+		}
 		return err
 	}
 
@@ -118,8 +129,14 @@ func (rt *Transfer) setPerms(f *File, mode fs.FileMode) error {
 	if rt.Opts.PreserveTimes &&
 		mode != rsync.S_IFLNK &&
 		!modTimeEqual(st.ModTime(), f.ModTime) {
-		if err := rt.DestRoot.Chtimes(f.Name, f.ModTime, f.ModTime); err != nil {
-			return err
+		if rt.Opts.WritableFS != nil {
+			if err := rt.Opts.WritableFS.Chtimes(f.Name, f.ModTime, f.ModTime); err != nil {
+				return err
+			}
+		} else if rt.DestRoot != nil {
+			if err := rt.DestRoot.Chtimes(f.Name, f.ModTime, f.ModTime); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -128,7 +145,7 @@ func (rt *Transfer) setPerms(f *File, mode fs.FileMode) error {
 		return err
 	}
 
-	if mode != rsync.S_IFLNK {
+	if mode != rsync.S_IFLNK && rt.DestRoot != nil {
 		if st.Mode().Perm() != perm { // only call Chmod if the permissions actually differ
 			if err := rt.DestRoot.Chmod(f.Name, perm); err != nil {
 				return err
@@ -154,7 +171,13 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 	}
 
 	local := filepath.Join(rt.Dest, f.Name)
-	st, err := rt.DestRoot.Lstat(f.Name)
+	var st fs.FileInfo
+	var err error
+	if rt.Opts != nil && rt.Opts.WritableFS != nil {
+		st, err = fs.Stat(rt.Opts.WritableFS, f.Name)
+	} else if rt.DestRoot != nil {
+		st, err = rt.DestRoot.Lstat(f.Name)
+	}
 
 	mode := f.Mode & rsync.S_IFMT
 	if mode == rsync.S_IFDIR {
@@ -174,7 +197,11 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 			if rt.Opts.DebugGTE(rsyncopts.DEBUG_GENR, 1) {
 				rt.Logger.Printf("MkdirAll(%s, %v)", f.Name, perm)
 			}
-			if err := rt.DestRoot.MkdirAll(f.Name, perm); err != nil {
+			if rt.Opts.WritableFS != nil {
+				if err := rt.Opts.WritableFS.MkdirAll(f.Name, perm); err != nil {
+					return fmt.Errorf("mkdir %s failed: %v", local, err)
+				}
+			} else if err := rt.DestRoot.MkdirAll(f.Name, perm); err != nil {
 				// TODO: EEXIST is okay
 				return err
 			}
@@ -302,23 +329,26 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 		return nil
 	}
 
-	// TODO: if deltas are disabled, request the file in full
+	if rt.Opts.WholeFile {
+		return requestFullFile()
+	}
 
 	in, err := rt.DestRoot.Open(f.Name)
 	if err != nil {
 		rt.Logger.Printf("failed to open %s, continuing: %v", local, err)
 		return requestFullFile()
 	}
-	defer in.Close()
-
 	if rt.Opts.DebugGTE(rsyncopts.DEBUG_GENR, 1) {
 		rt.Logger.Printf("sending sums for: %s", f.Name)
 	}
 	if err := rt.Conn.WriteInt32(int32(idx)); err != nil {
+		_ = in.Close()
 		return err
 	}
 
-	return rt.generateAndSendSums(in, st.Size())
+	err = rt.generateAndSendSums(in, st.Size())
+	_ = in.Close()
+	return err
 }
 
 // rsync/generator.c:generate_and_send_sums

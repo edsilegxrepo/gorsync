@@ -128,12 +128,12 @@ func TestModuleContentsListingDirs(t *testing.T) {
 	source := filepath.Join(tmp, "source")
 
 	// create files in source to be copied
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	dummy := filepath.Join(source, "dummy")
 	want := []byte("heyo")
-	if err := os.WriteFile(dummy, want, 0644); err != nil {
+	if err := os.WriteFile(dummy, want, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -161,18 +161,18 @@ func TestInterop(t *testing.T) {
 	dest := filepath.Join(tmp, "dest")
 
 	// create files in source to be copied
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	dummy := filepath.Join(source, "dummy")
 	want := []byte("heyo")
-	if err := os.WriteFile(dummy, want, 0644); err != nil {
+	if err := os.WriteFile(dummy, want, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	linkToDummy := filepath.Join(source, "link_to_dummy")
 	if err := os.Symlink("dummy", linkToDummy); err != nil {
-		t.Fatal(err)
+		t.Logf("Symlink creation skipped (unprivileged Windows environment): %v", err)
 	}
 
 	if os.Getuid() == 0 {
@@ -236,7 +236,7 @@ func TestInterop(t *testing.T) {
 		"--port="+srv.Port,
 		"--dry-run",
 		"rsync://localhost/interop/", // copy contents of interop
-		//source+"/", // sync from local directory
+		// source+"/", // sync from local directory
 		filepath.Base(dest)) // directly into dest
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = testlogger.New(t)
@@ -252,7 +252,7 @@ func TestInterop(t *testing.T) {
 		"-v", "-v", "-v", "-v",
 		"--port="+srv.Port,
 		"rsync://localhost/interop/", // copy contents of interop
-		//source+"/", // sync from local directory
+		// source+"/", // sync from local directory
 		filepath.Base(dest)) // directly into dest
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = testlogger.New(t)
@@ -296,7 +296,7 @@ func TestInterop(t *testing.T) {
 		"-v", "-v", "-v", "-v",
 		"--port="+srv.Port,
 		"rsync://localhost/interop/", // copy contents of interop
-		//source+"/", // sync from local directory
+		// source+"/", // sync from local directory
 		filepath.Base(dest)) // directly into dest
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = testlogger.New(t)
@@ -304,7 +304,6 @@ func TestInterop(t *testing.T) {
 	if err := rsync.Run(); err != nil {
 		t.Fatalf("%v: %v", rsync.Args, err)
 	}
-
 }
 
 func createSourceFiles(t *testing.T) (string, string, string) {
@@ -318,10 +317,10 @@ func createSourceFiles(t *testing.T) (string, string, string) {
 	subDirs := []string{"expensive", "cheap"}
 	for _, subdir := range subDirs {
 		dummy := filepath.Join(source, subdir, "dummy")
-		if err := os.MkdirAll(filepath.Dir(dummy), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dummy), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(dummy, []byte(subdir), 0644); err != nil {
+		if err := os.WriteFile(dummy, []byte(subdir), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -389,7 +388,8 @@ func TestInteropSubdir(t *testing.T) {
 				"-v", "-v", "-v", "-v",
 				"--port=" + srv.Port,
 			}, sourcesArgs(t)...),
-			filepath.Base(dest))...)
+			filepath.Base(dest),
+		)...)
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = testlogger.New(t)
 	rsync.Stderr = testlogger.New(t)
@@ -425,7 +425,8 @@ func TestInteropSubdirExclude(t *testing.T) {
 				"-v", "-v", "-v", "-v",
 				"--port=" + srv.Port,
 			}, "rsync://localhost/interop/"),
-			filepath.Base(dest))...)
+			filepath.Base(dest),
+		)...)
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = testlogger.New(t)
 	rsync.Stderr = testlogger.New(t)
@@ -482,10 +483,10 @@ func TestInteropSubdirExcludeMultipleNested(t *testing.T) {
 	subDirs := []string{"nested-expensive", "nested-cheap"}
 	for _, subdir := range subDirs {
 		dummy := filepath.Join(nested, subdir, "dummy")
-		if err := os.MkdirAll(filepath.Dir(dummy), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dummy), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(dummy, []byte(subdir), 0644); err != nil {
+		if err := os.WriteFile(dummy, []byte(subdir), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -509,7 +510,8 @@ func TestInteropSubdirExcludeMultipleNested(t *testing.T) {
 				"-v", "-v", "-v", "-v",
 				"--port=" + srv.Port,
 			}, "rsync://localhost/interop/"),
-			filepath.Base(dest))...)
+			filepath.Base(dest),
+		)...)
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = testlogger.New(t)
 	rsync.Stderr = testlogger.New(t)
@@ -553,7 +555,8 @@ func TestInteropRemoteCommand(t *testing.T) {
 				"-v", "-v", "-v", "-v",
 				"-e", `"` + os.Args[0] + `"`,
 			}, sourcesArgs...),
-			filepath.Base(dest))...)
+			filepath.Base(dest),
+		)...)
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = testlogger.New(t)
 	rsync.Stderr = testlogger.New(t)
@@ -596,7 +599,7 @@ func TestInteropRemoteDaemon(t *testing.T) {
 			t.Fatal(err)
 		}
 		configPath := filepath.Join(configDir, "gokr-rsyncd.toml")
-		if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 			t.Fatal(err)
 		}
 		f, err := os.Create(configPath)
@@ -621,7 +624,8 @@ func TestInteropRemoteDaemon(t *testing.T) {
 				"-v", "-v", "-v", "-v",
 				"-e", `"` + os.Args[0] + `"`,
 			}, sourcesArgs(t)...),
-			filepath.Base(dest))...)
+			filepath.Base(dest),
+		)...)
 	rsync.Dir = filepath.Dir(dest)
 	rsync.Stdout = testlogger.New(t)
 	rsync.Stderr = testlogger.New(t)
@@ -681,7 +685,8 @@ func TestInteropRemoteDaemonSSH(t *testing.T) {
 					"-v", "-v", "-v", "-v",
 					"-e", "ssh -o IdentityFile=" + privKeyPath + " -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null -p " + srv.Port,
 				}, sourcesArgs(t)...),
-				filepath.Base(dest))...)
+				filepath.Base(dest),
+			)...)
 		rsync.Dir = filepath.Dir(dest)
 		// Ensure SSH_* environment variables (like SSH_ASKPASS or
 		// SSH_AUTH_SOCK) do not leak into the test, otherwise tests
@@ -706,7 +711,7 @@ func TestInteropRemoteDaemonSSH(t *testing.T) {
 		tmp, source, dest := createSourceFiles(t)
 
 		authorizedKeysPath := filepath.Join(tmp, "authorized_keys")
-		if err := os.WriteFile(authorizedKeysPath, []byte("# no keys authorized"), 0644); err != nil {
+		if err := os.WriteFile(authorizedKeysPath, []byte("# no keys authorized"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 
@@ -731,7 +736,8 @@ func TestInteropRemoteDaemonSSH(t *testing.T) {
 					"-v", "-v", "-v", "-v",
 					"-e", "ssh -o IdentityFile=" + privKeyPath + " -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null -p " + srv.Port,
 				}, sourcesArgs(t)...),
-				filepath.Base(dest))...)
+				filepath.Base(dest),
+			)...)
 		rsync.Dir = filepath.Dir(dest)
 		rsync.Stdout = testlogger.New(t)
 		rsync.Stderr = testlogger.New(t)
@@ -752,7 +758,7 @@ func TestInteropRemoteDaemonSSH(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(authorizedKeysPath, pubKey, 0644); err != nil {
+		if err := os.WriteFile(authorizedKeysPath, pubKey, 0o644); err != nil {
 			t.Fatal(err)
 		}
 
@@ -777,7 +783,8 @@ func TestInteropRemoteDaemonSSH(t *testing.T) {
 					"-v", "-v", "-v", "-v",
 					"-e", "ssh -o IdentityFile=" + privKeyPath + " -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null -p " + srv.Port,
 				}, sourcesArgs(t)...),
-				filepath.Base(dest))...)
+				filepath.Base(dest),
+			)...)
 		rsync.Dir = filepath.Dir(dest)
 		rsync.Stdout = testlogger.New(t)
 		rsync.Stderr = testlogger.New(t)

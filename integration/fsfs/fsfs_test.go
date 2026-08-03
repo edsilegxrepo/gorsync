@@ -66,7 +66,7 @@ func TestMapFS(t *testing.T) {
 	}
 
 	// Restore write permission so that t.TempDir() cleanup succeeds
-	if err := os.Chmod(dest, 0755); err != nil {
+	if err := os.Chmod(dest, 0o755); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -165,7 +165,7 @@ func TestMapFSLargeFile(t *testing.T) {
 	}
 
 	// Restore write permission so that t.TempDir() cleanup succeeds
-	if err := os.Chmod(dest, 0755); err != nil {
+	if err := os.Chmod(dest, 0o755); err != nil {
 		t.Fatal(err)
 	}
 }

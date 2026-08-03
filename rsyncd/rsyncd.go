@@ -7,12 +7,15 @@ package rsyncd
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -25,14 +28,18 @@ import (
 	"github.com/gokrazy/rsync/internal/rsyncos"
 	"github.com/gokrazy/rsync/internal/rsyncwire"
 	"github.com/gokrazy/rsync/internal/sender"
+	"github.com/mmcloughlin/md4"
 )
 
 type Module struct {
-	Name     string   `toml:"name"`
-	Path     string   `toml:"path"` // If empty, FS must be non-nil
-	FS       fs.FS    `toml:"-"`    // If set, serve from this instead of Path
-	ACL      []string `toml:"acl"`
-	Writable bool     `toml:"writable"` // Must be false if FS is set
+	Name        string           `toml:"name"`
+	Path        string           `toml:"path"` // If empty, FS or WritableFS must be non-nil
+	FS          fs.FS            `toml:"-"`    // If set, serve read-only from this instead of Path
+	WritableFS  rsync.WritableFS `toml:"-"`    // If set, serve read/write from this virtual FS
+	ACL         []string         `toml:"acl"`
+	Writable    bool             `toml:"writable"`
+	AuthUsers   []string         `toml:"auth_users"`   // Usernames allowed to connect; empty means no auth
+	SecretsFile string           `toml:"secrets_file"` // Path to file with user:password lines
 }
 
 // Option specifies the server options.
@@ -213,8 +220,8 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 	requestedModule = strings.TrimSpace(requestedModule)
 	if requestedModule == "" || requestedModule == "#list" {
 		s.logger.Printf("client %v requested rsync module listing", conn.name)
-		io.WriteString(cwr, s.formatModuleList())
-		io.WriteString(cwr, "@RSYNCD: EXIT\n")
+		_, _ = io.WriteString(cwr, s.formatModuleList())
+		_, _ = io.WriteString(cwr, "@RSYNCD: EXIT\n")
 		return nil
 	}
 	s.logger.Printf("client %v requested rsync module %q", conn.name, requestedModule)
@@ -229,7 +236,14 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 		return err
 	}
 
-	io.WriteString(cwr, terminationCommand)
+	if len(module.AuthUsers) > 0 {
+		if err := s.authServer(rd, cwr, &module, conn.name); err != nil {
+			fmt.Fprintf(cwr, "@ERROR: auth failed on module %s\n", module.Name)
+			return err
+		}
+	}
+
+	_, _ = io.WriteString(cwr, terminationCommand)
 
 	// read requested flags
 	var flags []string
@@ -266,7 +280,7 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 		// Switch to multiplexing protocol, but only for server-side transmissions.
 		// Transmissions received from the client are not multiplexed.
 		mpx := &rsyncwire.MultiplexWriter{Writer: c.Writer}
-		mpx.WriteMsg(rsyncwire.MsgError, fmt.Appendf(nil, "gokr-rsync [sender]: %v\n", err))
+		_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gokr-rsync [sender]: %v\n", err))
 
 		return err
 	}
@@ -290,7 +304,11 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 			// skip pc.RemainingArgs[0], only strip RemainingArgs[1:]
 			continue
 		}
-		trimmed := strings.TrimPrefix(path, module.Name)
+		p := path
+		if at := strings.IndexByte(p, '@'); at > -1 {
+			p = p[at+1:]
+		}
+		trimmed := strings.TrimPrefix(p, module.Name)
 		if trimmed == "" {
 			trimmed = "."
 		}
@@ -300,6 +318,15 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 	s.logger.Printf("trimmed paths: %q", pc.RemainingArgs[1:])
 
 	return s.handleConn(ctx, conn, &module, pc, false)
+}
+
+func sanitizePath(p string) string {
+	p = strings.TrimPrefix(p, "/")
+	p = path.Clean(p)
+	if p == "" || p == "." || p == ".." {
+		return "."
+	}
+	return p
 }
 
 type Conn struct {
@@ -386,7 +413,7 @@ func (s *Server) handleConn(ctx context.Context, conn *Conn, module *Module, pc 
 		// If returning an error, send the error to the client for display, too:
 		defer func() {
 			if err != nil {
-				mpx.WriteMsg(rsyncwire.MsgError, fmt.Appendf(nil, "gokr-rsync [sender]: %v\n", err))
+				_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gokr-rsync [sender]: %v\n", err))
 			}
 		}()
 
@@ -396,7 +423,7 @@ func (s *Server) handleConn(ctx context.Context, conn *Conn, module *Module, pc 
 	// If returning an error, send the error to the client for display, too:
 	defer func() {
 		if err != nil {
-			mpx.WriteMsg(rsyncwire.MsgError, fmt.Appendf(nil, "gokr-rsync [receiver]: %v\n", err))
+			_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gokr-rsync [receiver]: %v\n", err))
 		}
 	}()
 	return s.handleConnReceiver(module, crd, cwr, paths, opts, false, c, sessionChecksumSeed)
@@ -441,9 +468,13 @@ func (s *Server) handleConnReceiver(module *Module, crd *rsyncwire.CountingReade
 			PreserveDevices:  opts.PreserveDevices(),
 			PreserveSpecials: opts.PreserveSpecials(),
 			PreserveTimes:    opts.PreserveMTimes(),
-			// TODO: PreserveHardlinks: opts.PreserveHardlinks,
+			PreserveHardlinks: opts.PreserveHardLinks(),
 			IgnoreTimes:    opts.IgnoreTimes(),
+			SizeOnly:       opts.SizeOnly(),
+			TempDir:        opts.TempDir(),
 			AlwaysChecksum: opts.AlwaysChecksum(),
+			WholeFile:      opts.WholeFile(),
+			WritableFS:     module.WritableFS,
 
 			InfoGTE:  opts.InfoGTE,
 			DebugGTE: opts.DebugGTE,
@@ -456,7 +487,7 @@ func (s *Server) handleConnReceiver(module *Module, crd *rsyncwire.CountingReade
 		Seed:     sessionChecksumSeed,
 		Progress: progress.NewPrinter(io.Discard, time.Now),
 	}
-	if err := os.MkdirAll(rt.Dest, 0755); err != nil {
+	if err := os.MkdirAll(rt.Dest, 0o755); err != nil {
 		return fmt.Errorf("MkdirAll(dest=%s): %v", rt.Dest, err)
 	}
 	rt.DestRoot, err = os.OpenRoot(rt.Dest)
@@ -472,30 +503,33 @@ func (s *Server) handleConnReceiver(module *Module, crd *rsyncwire.CountingReade
 		// Descend into subdirectory (if requested),
 		// using the os.OpenRoot traversal-safe API.
 		if len(paths) == 1 && paths[0] != "/" {
-			subdir := strings.TrimPrefix(paths[0], "/")
-			subRoot, err := rt.DestRoot.OpenRoot(subdir)
-			if err != nil {
-				if os.IsNotExist(err) {
-					if err := rt.DestRoot.MkdirAll(subdir, 0755); err != nil {
-						return fmt.Errorf("MkdirAll(%s): %v", subdir, err)
-					}
-					subRoot, err = rt.DestRoot.OpenRoot(subdir)
-				}
+			subdir := strings.Trim(paths[0], "/")
+			subdir = strings.TrimSuffix(filepath.Clean(subdir), string(filepath.Separator))
+			if subdir != "" && subdir != "." {
+				subRoot, err := rt.DestRoot.OpenRoot(subdir)
 				if err != nil {
-					return fmt.Errorf("OpenRoot(%s): %v", subdir, err)
+					if os.IsNotExist(err) {
+						if err := rt.DestRoot.MkdirAll(subdir, 0o755); err != nil {
+							return fmt.Errorf("MkdirAll(%s): %v", subdir, err)
+						}
+						subRoot, err = rt.DestRoot.OpenRoot(subdir)
+					}
+					if err != nil {
+						return fmt.Errorf("OpenRoot(%s): %v", subdir, err)
+					}
 				}
-			}
-			if name := subRoot.Name(); filepath.IsAbs(name) {
-				rt.Dest = name
-			} else {
-				// Go changed behavior: In Go 1.25, subRoot.Name()
-				// did not return an absolute path:
-				// https://go.googlesource.com/go/+/ed7f804
-				rt.Dest = filepath.Join(rt.Dest, name)
-			}
-			rt.DestRoot = subRoot
-			if opts.Verbose() {
-				s.logger.Printf("opened subdirectory %q", rt.Dest)
+				if name := subRoot.Name(); filepath.IsAbs(name) {
+					rt.Dest = name
+				} else {
+					// Go changed behavior: In Go 1.25, subRoot.Name()
+					// did not return an absolute path:
+					// https://go.googlesource.com/go/+/ed7f804
+					rt.Dest = filepath.Join(rt.Dest, name)
+				}
+				rt.DestRoot = subRoot
+				if opts.Verbose() {
+					s.logger.Printf("opened subdirectory %q", rt.Dest)
+				}
 			}
 		}
 	}
@@ -578,7 +612,7 @@ func (s *Server) handleConnSender(module *Module, crd *rsyncwire.CountingReader,
 func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	go func() {
 		<-ctx.Done()
-		ln.Close() // unblocks Accept()
+		_ = ln.Close() // unblocks Accept()
 	}()
 
 	for {
@@ -614,6 +648,10 @@ func validateModule(mod Module) error {
 		if mod.Path != "" {
 			return fmt.Errorf("module %q: cannot specify both Path and FS", mod.Name)
 		}
+	} else if mod.WritableFS != nil {
+		if mod.Path != "" {
+			return fmt.Errorf("module %q: cannot specify both Path and WritableFS", mod.Name)
+		}
 	} else {
 		if mod.Path == "" {
 			return fmt.Errorf("module %q has empty path", mod.Name)
@@ -621,4 +659,95 @@ func validateModule(mod Module) error {
 	}
 
 	return nil
+}
+
+func (s *Server) authServer(rd *bufio.Reader, cwr io.Writer, module *Module, remoteAddr string) error {
+	challenge := genChallenge()
+	fmt.Fprintf(cwr, "@RSYNCD: AUTHREQD %s\n", challenge)
+
+	line, err := rd.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("reading auth response: %v", err)
+	}
+	line = strings.TrimSpace(line)
+	sp := strings.IndexByte(line, ' ')
+	if sp < 0 {
+		s.logger.Printf("auth failed on module %s from %s: invalid response", module.Name, remoteAddr)
+		return fmt.Errorf("invalid auth response")
+	}
+	user, response := line[:sp], line[sp+1:]
+	s.logger.Printf("authServer got user=%q, response=%q", user, response)
+
+	matched := false
+	for _, allowed := range module.AuthUsers {
+		if allowed == user {
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		s.logger.Printf("auth failed on module %s from %s for %q: unknown user (allowed: %v)", module.Name, remoteAddr, user, module.AuthUsers)
+		return fmt.Errorf("auth failed")
+	}
+
+	secret, err := lookupSecret(module.SecretsFile, user)
+	if err != nil {
+		s.logger.Printf("auth failed on module %s from %s for %s: %v (secretsFile: %s)", module.Name, remoteAddr, user, err, module.SecretsFile)
+		return fmt.Errorf("auth failed")
+	}
+
+	expected := authHash(secret, challenge)
+	if response != expected {
+		s.logger.Printf("auth failed on module %s from %s for %s: password mismatch (expected %q, got %q, secret=%q, challenge=%q)", module.Name, remoteAddr, user, expected, response, secret, challenge)
+		return fmt.Errorf("auth failed")
+	}
+
+	s.logger.Printf("auth ok on module %s from %s for %s", module.Name, remoteAddr, user)
+	return nil
+}
+
+func genChallenge() string {
+	var buf [16]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		// Fallback value if system entropy is unavailable
+		for i := range buf {
+			buf[i] = byte(i)
+		}
+	}
+	h := md4.New()
+	h.Write([]byte{0, 0, 0, 0})
+	h.Write(buf[:])
+	return base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
+}
+
+func authHash(password, challenge string) string {
+	h := md4.New()
+	h.Write([]byte{0, 0, 0, 0})
+	h.Write([]byte(password))
+	h.Write([]byte(challenge))
+	return base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
+}
+
+func lookupSecret(path, user string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("no secrets file configured")
+	}
+	data, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return "", fmt.Errorf("reading secrets file: %v", err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || line[0] == '#' {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		if parts[0] == user {
+			return strings.TrimSpace(parts[1]), nil
+		}
+	}
+	return "", fmt.Errorf("user not found in secrets file")
 }

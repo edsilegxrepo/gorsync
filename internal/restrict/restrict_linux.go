@@ -39,7 +39,8 @@ func MaybeFileSystem(roDirsOrFiles []string, rwDirs []string) error {
 			landlock.RODirs(roDirs...).IgnoreIfMissing(),
 			landlock.ROFiles(roFiles...).IgnoreIfMissing(),
 			landlock.RWDirs(rwDirs...).WithRefer(),
-		}...)...)
+		}...)...,
+	)
 	if err != nil {
 		return fmt.Errorf("landlock: %v", err)
 	}

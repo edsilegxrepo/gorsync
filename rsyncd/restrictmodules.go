@@ -10,11 +10,11 @@ import (
 func restrictToModules(modules []Module) error {
 	var roDirs, rwDirs []string
 	for _, mod := range modules {
-		if mod.FS != nil {
+		if mod.FS != nil || mod.WritableFS != nil {
 			continue
 		}
 		if mod.Writable {
-			if err := os.MkdirAll(mod.Path, 0755); err != nil {
+			if err := os.MkdirAll(mod.Path, 0o755); err != nil {
 				return fmt.Errorf("MkdirAll(mod=%s): %v", mod.Name, err)
 			}
 			rwDirs = append(rwDirs, mod.Path)

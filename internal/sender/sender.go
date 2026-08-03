@@ -182,7 +182,7 @@ func (st *Transfer) sendFile(fileIndex int32, fl file) error {
 	}
 
 	h := md4.New()
-	binary.Write(h, binary.LittleEndian, st.Seed)
+	_ = binary.Write(h, binary.LittleEndian, st.Seed)
 
 	// Calculate the md4 hash in a goroutine.
 	//

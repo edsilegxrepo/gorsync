@@ -66,7 +66,7 @@ func (s *fsSource) Open(name string) (File, error) {
 	}
 	sf, ok := f.(File) // checks for io.Seeker
 	if !ok {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("open %s: fs.File must implement io.Seeker", name)
 	}
 	return sf, nil

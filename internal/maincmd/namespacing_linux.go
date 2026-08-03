@@ -22,7 +22,7 @@ func pivotRoot(newroot string) error {
 	putold := filepath.Join(newroot, "/.pivot_root")
 
 	// create putold directory
-	if err := os.MkdirAll(putold, 0700); err != nil {
+	if err := os.MkdirAll(putold, 0o700); err != nil {
 		return err
 	}
 
@@ -33,7 +33,8 @@ func pivotRoot(newroot string) error {
 		newroot,
 		"",
 		syscall.MS_BIND|syscall.MS_REC,
-		"")
+		"",
+	)
 	if err != nil {
 		return fmt.Errorf("mount(): %v", err)
 	}
@@ -44,7 +45,8 @@ func pivotRoot(newroot string) error {
 		newroot,
 		"",
 		syscall.MS_BIND|syscall.MS_REMOUNT|syscall.MS_RDONLY,
-		"")
+		"",
+	)
 	if err != nil {
 		return fmt.Errorf("mount -o remount,ro: %v", err)
 	}
@@ -105,7 +107,7 @@ func namespace(osenv *rsyncos.Env, modules []rsyncd.Module, listen string) error
 		for _, mod := range modules {
 			osenv.Logf("  rsync module %q from host=%s to namespace=/%s", mod.Name, mod.Path, mod.Name)
 			// TODO: restrict module names to not contain slashes. does rsync do that?
-			if err := os.MkdirAll(mod.Name, 0755); err != nil {
+			if err := os.MkdirAll(mod.Name, 0o755); err != nil {
 				return err
 			}
 			if err := syscall.Mount(mod.Path, mod.Name, "none", syscall.MS_BIND|syscall.MS_RDONLY, ""); err != nil {

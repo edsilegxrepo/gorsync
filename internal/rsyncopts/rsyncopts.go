@@ -703,31 +703,49 @@ See https://github.com/gokrazy/rsync for updates, bug reports, and answers
 `
 }
 
-func (o *Options) ShellCommand() string       { return o.shell_cmd }
-func (o *Options) UpdateOnly() bool           { return o.update_only != 0 }
-func (o *Options) DryRun() bool               { return o.dry_run != 0 }
-func (o *Options) PreserveLinks() bool        { return o.preserve_links != 0 }
-func (o *Options) PreserveUid() bool          { return o.preserve_uid != 0 }
-func (o *Options) PreserveGid() bool          { return o.preserve_gid != 0 }
-func (o *Options) PreserveDevices() bool      { return o.preserve_devices != 0 }
-func (o *Options) PreserveMTimes() bool       { return o.preserve_mtimes != 0 }
-func (o *Options) PreservePerms() bool        { return o.preserve_perms != 0 }
-func (o *Options) PreserveSpecials() bool     { return o.preserve_specials != 0 }
-func (o *Options) PreserveHardLinks() bool    { return o.preserve_hard_links != 0 }
-func (o *Options) Recurse() bool              { return o.recurse != 0 }
-func (o *Options) Verbose() bool              { return o.verbose != 0 }
-func (o *Options) DeleteMode() bool           { return o.delete_mode != 0 }
-func (o *Options) Sender() bool               { return o.am_sender != 0 }
-func (o *Options) SetSender()                 { o.am_sender = 1 }
+func (o *Options) ShellCommand() string    { return o.shell_cmd }
+func (o *Options) UpdateOnly() bool        { return o.update_only != 0 }
+func (o *Options) DryRun() bool            { return o.dry_run != 0 }
+func (o *Options) PreserveLinks() bool     { return o.preserve_links != 0 }
+func (o *Options) PreserveUid() bool       { return o.preserve_uid != 0 }
+func (o *Options) PreserveGid() bool       { return o.preserve_gid != 0 }
+func (o *Options) PreserveDevices() bool   { return o.preserve_devices != 0 }
+func (o *Options) PreserveMTimes() bool    { return o.preserve_mtimes != 0 }
+func (o *Options) PreservePerms() bool     { return o.preserve_perms != 0 }
+func (o *Options) PreserveSpecials() bool  { return o.preserve_specials != 0 }
+func (o *Options) PreserveHardLinks() bool { return o.preserve_hard_links != 0 }
+func (o *Options) Recurse() bool           { return o.recurse != 0 }
+func (o *Options) Verbose() bool           { return o.verbose != 0 }
+func (o *Options) DeleteMode() bool        { return o.delete_mode != 0 }
+func (o *Options) DeleteExcluded() bool    { return o.delete_excluded != 0 }
+func (o *Options) Sender() bool            { return o.am_sender != 0 }
+func (o *Options) SetSender()              { o.am_sender = 1 }
+func (o *Options) SetListOnly() {
+	o.list_only = 1
+	if o.recurse == 0 {
+		o.xfer_dirs = 1
+	}
+}
+func (o *Options) ListOnlyVal() int { return o.list_only }
+func (o *Options) RestoreListOnly(listOnly int, xferDirs int) {
+	o.list_only = listOnly
+	o.xfer_dirs = xferDirs
+}
 func (o *Options) LocalServer() bool          { return o.local_server != 0 }
 func (o *Options) SetLocalServer()            { o.local_server = 1 }
 func (o *Options) Server() bool               { return o.am_server != 0 }
 func (o *Options) Daemon() bool               { return o.am_daemon != 0 }
 func (o *Options) ConnectTimeoutSeconds() int { return o.connect_timeout }
+func (o *Options) IOTimeoutSeconds() int      { return o.io_timeout }
+func (o *Options) BWLimit() int               { return o.bwlimit }
+func (o *Options) SizeOnly() bool             { return o.size_only != 0 }
+func (o *Options) TempDir() string            { return o.tmpdir }
 func (o *Options) AlwaysChecksum() bool       { return o.always_checksum != 0 }
+func (o *Options) WholeFile() bool            { return o.whole_file > 0 }
 func (o *Options) IgnoreTimes() bool          { return o.ignore_times != 0 }
 func (o *Options) OutputMOTD() bool           { return o.output_motd != 0 }
 func (o *Options) RsyncPort() int             { return o.rsync_port }
+func (o *Options) PasswordFile() string       { return o.password_file }
 func (o *Options) XferDirs() int              { return o.xfer_dirs }
 func (o *Options) FilterRules() []string      { return o.filterRules }
 func (o *Options) Progress() bool {
@@ -879,7 +897,7 @@ func (o *Options) gokrazyTable() []poptOption {
 		//{"no-i-d", "", POPT_ARG_VAL, &o.implied_dirs, 0},
 		//{"chmod", "", POPT_ARG_STRING, nil, OPT_CHMOD},
 		{"ignore-times", "I", POPT_ARG_NONE, &o.ignore_times, 0},
-		//{"size-only", "", POPT_ARG_NONE, &o.size_only, 0},
+		{"size-only", "", POPT_ARG_NONE, &o.size_only, 0},
 		//{"one-file-system", "x", POPT_ARG_NONE, nil, 'x'},
 		//{"no-one-file-system", "", POPT_ARG_VAL, &o.one_file_system, 0},
 		//{"no-x", "", POPT_ARG_VAL, &o.one_file_system, 0},
@@ -922,9 +940,9 @@ func (o *Options) gokrazyTable() []poptOption {
 		//{"exclude-from", "", POPT_ARG_STRING, nil, OPT_EXCLUDE_FROM},
 		//{"include-from", "", POPT_ARG_STRING, nil, OPT_INCLUDE_FROM},
 		//{"cvs-exclude", "C", POPT_ARG_NONE, &o.cvs_exclude, 0},
-		//{"whole-file", "W", POPT_ARG_VAL, &o.whole_file, 1},
-		//{"no-whole-file", "", POPT_ARG_VAL, &o.whole_file, 0},
-		//{"no-W", "", POPT_ARG_VAL, &o.whole_file, 0},
+		{"whole-file", "W", POPT_ARG_VAL, &o.whole_file, 1},
+		{"no-whole-file", "", POPT_ARG_VAL, &o.whole_file, 0},
+		{"no-W", "", POPT_ARG_VAL, &o.whole_file, 0},
 		{"checksum", "c", POPT_ARG_VAL, &o.always_checksum, 1},
 		{"no-checksum", "", POPT_ARG_VAL, &o.always_checksum, 0},
 		{"no-c", "", POPT_ARG_VAL, &o.always_checksum, 0},
@@ -970,8 +988,8 @@ func (o *Options) gokrazyTable() []poptOption {
 		//{"itemize-changes", "i", POPT_ARG_NONE, nil, 'i'},
 		//{"no-itemize-changes", "", POPT_ARG_VAL, &o.itemize_changes, 0},
 		//{"no-i", "", POPT_ARG_VAL, &o.itemize_changes, 0},
-		//{"bwlimit", "", POPT_ARG_STRING, &o.bwlimit_arg, OPT_BWLIMIT},
-		//{"no-bwlimit", "", POPT_ARG_VAL, &o.bwlimit, 0},
+		{"bwlimit", "", POPT_ARG_STRING, &o.bwlimit_arg, OPT_BWLIMIT},
+		{"no-bwlimit", "", POPT_ARG_VAL, &o.bwlimit, 0},
 		//{"backup", "b", POPT_ARG_VAL, &o.make_backups, 1},
 		//{"no-backup", "", POPT_ARG_VAL, &o.make_backups, 0},
 		//{"backup-dir", "", POPT_ARG_STRING, &o.backup_dir, 0},
@@ -996,8 +1014,8 @@ func (o *Options) gokrazyTable() []poptOption {
 		//{"usermap", "", POPT_ARG_STRING, nil, OPT_USERMAP},
 		//{"groupmap", "", POPT_ARG_STRING, nil, OPT_GROUPMAP},
 		//{"chown", "", POPT_ARG_STRING, nil, OPT_CHOWN},
-		//{"timeout", "", POPT_ARG_INT, &o.io_timeout, 0},
-		//{"no-timeout", "", POPT_ARG_VAL, &o.io_timeout, 0},
+		{"timeout", "", POPT_ARG_INT, &o.io_timeout, 0},
+		{"no-timeout", "", POPT_ARG_VAL, &o.io_timeout, 0},
 		{"contimeout", "", POPT_ARG_INT, &o.connect_timeout, 0},
 		{"no-contimeout", "", POPT_ARG_VAL, &o.connect_timeout, 0},
 		//{"fsync", "", POPT_ARG_NONE, &o.do_fsync, 0},
@@ -1006,7 +1024,7 @@ func (o *Options) gokrazyTable() []poptOption {
 		//{"stop-at", "", POPT_ARG_STRING, nil, OPT_STOP_AT},
 		{"rsh", "e", POPT_ARG_STRING, &o.shell_cmd, 0},
 		//{"rsync-path", "", POPT_ARG_STRING, &o.rsync_path, 0},
-		//{"temp-dir", "T", POPT_ARG_STRING, &o.tmpdir, 0},
+		{"temp-dir", "T", POPT_ARG_STRING, &o.tmpdir, 0},
 		//{"iconv", "", POPT_ARG_STRING, &o.iconv_opt, 0},
 		//{"no-iconv", "", POPT_ARG_NONE, nil, OPT_NO_ICONV},
 		//{"ipv4", "4", POPT_ARG_VAL, &o.default_af_hint, syscall.AF_INET},
@@ -1021,7 +1039,7 @@ func (o *Options) gokrazyTable() []poptOption {
 		//{"address", "", POPT_ARG_STRING, &o.bind_address, 0},
 		{"port", "", POPT_ARG_INT, &o.rsync_port, 0},
 		//{"sockopts", "", POPT_ARG_STRING, &o.sockopts, 0},
-		//{"password-file", "", POPT_ARG_STRING, &o.password_file, 0},
+		{"password-file", "", POPT_ARG_STRING, &o.password_file, 0},
 		//{"early-input", "", POPT_ARG_STRING, &o.early_input_file, 0},
 		//{"blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 1},
 		//{"no-blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 0},
@@ -1330,6 +1348,10 @@ func (pc *Context) ParseArguments(osenv *rsyncos.Env, args []string) error {
 		// Most options are handled by poptGetNextOpt, only special cases
 		// are returned and handled here.
 		switch opt {
+		case 0:
+			// Option handled directly by popt field pointers.
+			continue
+
 		case 'V':
 			version_opt_cnt++
 
@@ -1388,6 +1410,13 @@ func (pc *Context) ParseArguments(osenv *rsyncos.Env, args []string) error {
 			opts.filterRules = append(opts.filterRules, "- "+pc.poptGetOptArg())
 		case OPT_INCLUDE:
 			opts.filterRules = append(opts.filterRules, "+ "+pc.poptGetOptArg())
+		case OPT_BWLIMIT:
+			arg := pc.poptGetOptArg()
+			val, err := strconv.Atoi(arg)
+			if err != nil {
+				return fmt.Errorf("invalid --bwlimit argument %q: %v", arg, err)
+			}
+			opts.bwlimit = val
 
 		case OPT_INCLUDE_FROM,
 			OPT_EXCLUDE_FROM:
@@ -1475,8 +1504,7 @@ func (pc *Context) ParseArguments(osenv *rsyncos.Env, args []string) error {
 			return errNotYetImplemented
 
 		case OPT_MAX_SIZE, // (needs parse_size_arg)
-			OPT_MIN_SIZE,
-			OPT_BWLIMIT:
+			OPT_MIN_SIZE:
 			return errNotYetImplemented
 
 		case OPT_APPEND:
@@ -1491,10 +1519,14 @@ func (pc *Context) ParseArguments(osenv *rsyncos.Env, args []string) error {
 			return errNotYetImplemented
 
 		case OPT_INFO:
-			parseOutputWords(osenv, infoWords[:], opts.info[:], pc.poptGetOptArg(), USER_PRIORITY)
+			if err := parseOutputWords(osenv, infoWords[:], opts.info[:], pc.poptGetOptArg(), USER_PRIORITY); err != nil {
+				return err
+			}
 
 		case OPT_DEBUG:
-			parseOutputWords(osenv, debugWords[:], opts.debug[:], pc.poptGetOptArg(), USER_PRIORITY)
+			if err := parseOutputWords(osenv, debugWords[:], opts.debug[:], pc.poptGetOptArg(), USER_PRIORITY); err != nil {
+				return err
+			}
 
 		case OPT_USERMAP,
 			OPT_GROUPMAP,

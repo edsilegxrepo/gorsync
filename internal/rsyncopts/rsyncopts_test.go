@@ -232,3 +232,46 @@ func TestParseArgumentsRemaining(t *testing.T) {
 		})
 	}
 }
+
+func TestNewFlagsAndServerOptions(t *testing.T) {
+	osenv := rsyncostest.New(t)
+	for _, flag := range []string{"-W", "--size-only", "--temp-dir=/tmp/staging", "--bwlimit=500", "--timeout=30", "--delete"} {
+		pc := NewContext(NewOptions(osenv))
+		if err := pc.ParseArguments(osenv, []string{flag}); err != nil {
+			t.Fatalf("ParseArguments(%q) failed: %v", flag, err)
+		}
+	}
+	pc := NewContext(NewOptions(osenv))
+	args := []string{"-W", "--size-only", "--temp-dir=/tmp/staging", "--bwlimit=500", "--timeout=30", "--delete"}
+	if err := pc.ParseArguments(osenv, args); err != nil {
+		t.Fatalf("ParseArguments failed: %v", err)
+	}
+
+	opts := pc.Options
+	if !opts.WholeFile() {
+		t.Errorf("expected WholeFile to be true")
+	}
+	if !opts.SizeOnly() {
+		t.Errorf("expected SizeOnly to be true")
+	}
+	if got := opts.TempDir(); got != "/tmp/staging" {
+		t.Errorf("expected TempDir to be /tmp/staging, got %q", got)
+	}
+	if got := opts.BWLimit(); got != 500 {
+		t.Errorf("expected BWLimit to be 500, got %d", got)
+	}
+	if got := opts.IOTimeoutSeconds(); got != 30 {
+		t.Errorf("expected IOTimeoutSeconds to be 30, got %d", got)
+	}
+	if !opts.DeleteMode() {
+		t.Errorf("expected DeleteMode to be true")
+	}
+
+	sopts := opts.ServerOptions()
+	soptsStr := strings.Join(sopts, " ")
+	for _, expected := range []string{"--server", "--size-only", "--timeout=30", "--bwlimit=500", "--temp-dir=/tmp/staging", "--delete"} {
+		if !strings.Contains(soptsStr, expected) {
+			t.Errorf("ServerOptions() missing %q, got: %s", expected, soptsStr)
+		}
+	}
+}

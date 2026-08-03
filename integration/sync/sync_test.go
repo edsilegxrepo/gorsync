@@ -125,18 +125,18 @@ func TestSyncMultipleSources(t *testing.T) {
 	src1 := filepath.Join(tmp, "src1")
 	src2 := filepath.Join(tmp, "src2")
 	dest := filepath.Join(tmp, "dest")
-	if err := os.MkdirAll(src1, 0755); err != nil {
+	if err := os.MkdirAll(src1, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	const hello = "world"
-	if err := os.WriteFile(filepath.Join(src1, "hello"), []byte(hello), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(src1, "hello"), []byte(hello), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(src2, 0755); err != nil {
+	if err := os.MkdirAll(src2, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	const bye = "moon"
-	if err := os.WriteFile(filepath.Join(src2, "bye"), []byte(bye), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(src2, "bye"), []byte(bye), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

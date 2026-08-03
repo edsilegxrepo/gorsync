@@ -50,7 +50,7 @@ func (st *Transfer) hashSearch(targets []target, tagTable map[uint16]int, head r
 
 	// sum_init()
 	h := md4.New()
-	binary.Write(h, binary.LittleEndian, st.Seed)
+	_ = binary.Write(h, binary.LittleEndian, st.Seed)
 
 	// The following quotes are citations from
 	// https://www.samba.org/~tridge/phd_thesis.pdf, section 3.2.6 The
@@ -226,7 +226,6 @@ Outer:
 	}
 
 	return nil
-
 }
 
 // rsync/match.c:matched

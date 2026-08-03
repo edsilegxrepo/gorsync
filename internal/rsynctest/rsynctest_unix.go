@@ -14,24 +14,24 @@ import (
 )
 
 func CreateDummyDeviceFiles(t *testing.T, dir string) {
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	char := filepath.Join(dir, "char")
 	// major 1, minor 5, like /dev/zero
-	if err := unix.Mknod(char, 0600|syscall.S_IFCHR, int(unix.Mkdev(1, 5))); err != nil {
+	if err := unix.Mknod(char, 0o600|syscall.S_IFCHR, int(unix.Mkdev(1, 5))); err != nil {
 		t.Fatal(err)
 	}
 
 	block := filepath.Join(dir, "block")
 	// major 242, minor 9, like /dev/nvme0
-	if err := unix.Mknod(block, 0600|syscall.S_IFBLK, int(unix.Mkdev(242, 9))); err != nil {
+	if err := unix.Mknod(block, 0o600|syscall.S_IFBLK, int(unix.Mkdev(242, 9))); err != nil {
 		t.Fatal(err)
 	}
 
 	fifo := filepath.Join(dir, "fifo")
-	if err := unix.Mkfifo(fifo, 0600); err != nil {
+	if err := unix.Mkfifo(fifo, 0o600); err != nil {
 		t.Fatal(err)
 	}
 

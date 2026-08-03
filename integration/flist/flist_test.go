@@ -17,12 +17,12 @@ func TestLargeFileList(t *testing.T) {
 	tmp := t.TempDir()
 
 	source := filepath.Join(tmp, "source")
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	for i := range 5000 {
 		fn := fmt.Sprintf("file_with_long_name_number_%04d", i)
-		if err := os.WriteFile(filepath.Join(source, fn), []byte("dummy"), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(source, fn), []byte("dummy"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}

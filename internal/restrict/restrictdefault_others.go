@@ -20,3 +20,7 @@ var defaultRoDirs = []string{
 	// after a while.
 	"/etc",
 }
+
+func init() {
+	_ = defaultRoDirs
+}

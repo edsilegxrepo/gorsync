@@ -90,11 +90,11 @@ func (s *session) request(ctx context.Context, req *ssh.Request) error {
 			if _, err := s.channel.SendRequest("exit-status", false /* wantReply */, status); err != nil {
 				s.anonssh.osenv.Logf("err2: %v", err)
 			}
-			s.channel.Close()
+			_ = s.channel.Close()
 		}()
 
 		if req.WantReply {
-			req.Reply(true, nil)
+			_ = req.Reply(true, nil)
 		}
 
 		return nil
@@ -130,9 +130,9 @@ func (as *anonssh) handleSession(newChannel ssh.NewChannel) {
 				if errmsg[len(errmsg)-1] != '\n' {
 					errmsg = append(errmsg, '\n')
 				}
-				req.Reply(false, errmsg)
-				channel.Write(errmsg)
-				channel.Close()
+				_ = req.Reply(false, errmsg)
+				_, _ = channel.Write(errmsg)
+				_ = channel.Close()
 			}
 		}
 		s.anonssh.osenv.Logf("SSH requests exhausted")
@@ -144,7 +144,7 @@ func (as *anonssh) handleChannel(newChan ssh.NewChannel) {
 	case "session":
 		as.handleSession(newChan)
 	default:
-		newChan.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %q", t))
+		_ = newChan.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %q", t))
 		return
 	}
 }
@@ -163,7 +163,7 @@ func genHostKey(keyPath string) ([]byte, error) {
 		Type:  "PRIVATE KEY",
 		Bytes: x509b,
 	}
-	f, err := os.OpenFile(keyPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(keyPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, err
 	}
@@ -221,10 +221,10 @@ func ListenerFromConfig(osenv *rsyncos.Env, cfg rsyncdconfig.Listener) (*Listene
 }
 
 func loadHostKey(path string) (ssh.Signer, error) {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		if os.IsNotExist(err) {
-			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return nil, err
 			}
 			b, err = genHostKey(path)
@@ -240,7 +240,7 @@ func loadHostKey(path string) (ssh.Signer, error) {
 }
 
 func loadAuthorizedKeys(osenv *rsyncos.Env, path string) (map[string]bool, error) {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func loadAuthorizedKeys(osenv *rsyncos.Env, path string) (map[string]bool, error
 func Serve(ctx context.Context, osenv *rsyncos.Env, ln net.Listener, listener *Listener, cfg *rsyncdconfig.Config, main mainFunc) error {
 	go func() {
 		<-ctx.Done()
-		ln.Close() // unblocks Accept()
+		_ = ln.Close() // unblocks Accept()
 	}()
 
 	as := &anonssh{

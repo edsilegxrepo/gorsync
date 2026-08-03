@@ -23,21 +23,21 @@ func TestReceiverListing(t *testing.T) {
 	tmp := t.TempDir()
 	source := filepath.Join(tmp, "source")
 
-	if err := os.MkdirAll(source, 0755); err != nil {
+	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	// This explicit chmod might seem redundant at first,
 	// but is required to make the test pass with umask 027.
-	if err := os.Chmod(source, 0755); err != nil {
+	if err := os.Chmod(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	hello := filepath.Join(source, "hello")
-	if err := os.WriteFile(hello, []byte("world"), 0644); err != nil {
+	if err := os.WriteFile(hello, []byte("world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// This explicit chmod might seem redundant at first,
 	// but is required to make the test pass with umask 027.
-	if err := os.Chmod(hello, 0644); err != nil {
+	if err := os.Chmod(hello, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	mtime, err := time.Parse(time.RFC3339, "2009-11-10T23:00:00Z")

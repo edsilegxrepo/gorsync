@@ -3,6 +3,7 @@ package receiver
 import (
 	"os"
 
+	"github.com/gokrazy/rsync"
 	"github.com/gokrazy/rsync/internal/log"
 	"github.com/gokrazy/rsync/internal/progress"
 	"github.com/gokrazy/rsync/internal/rsyncopts"
@@ -27,7 +28,11 @@ type TransferOpts struct {
 	PreserveTimes     bool
 	PreserveHardlinks bool
 	IgnoreTimes       bool
+	SizeOnly          bool
+	TempDir           string
 	AlwaysChecksum    bool
+	WholeFile         bool
+	WritableFS        rsync.WritableFS
 
 	InfoGTE  func(rsyncopts.InfoLevel, uint16) bool
 	DebugGTE func(rsyncopts.DebugLevel, uint16) bool
