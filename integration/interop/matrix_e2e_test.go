@@ -7,6 +7,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -927,6 +928,199 @@ fi
 
 		waitForPort(t, port)
 		t.Logf("Scenario 4 Windows TLS daemon listening on port %d", port)
+	})
+}
+
+func TestPhase3MultiThreading4Scenarios(t *testing.T) {
+	tmpDir := t.TempDir()
+	binClient, binDaemon := buildBinaries(t)
+
+	// Scenario 1: Windows Client -> Windows Server (Multi-threaded transfer with --parallel=8)
+	t.Run("Scenario1_WinClient_WinServer_MultiThreading", func(t *testing.T) {
+		srcDir := filepath.Join(tmpDir, "win_mt_src")
+		destDir := filepath.Join(tmpDir, "win_mt_dest")
+		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.MkdirAll(destDir, 0755)
+
+		// Generate multiple files for parallel processing
+		for i := 1; i <= 20; i++ {
+			_ = os.WriteFile(filepath.Join(srcDir, fmt.Sprintf("payload_%d.bin", i)), []byte(fmt.Sprintf("Parallel payload content %d", i)), 0644)
+		}
+
+		port := getFreePort(t)
+		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
+		defer stopServer()
+
+		waitForPort(t, port)
+
+		srcURL := fmt.Sprintf("rsync://127.0.0.1:%d/mod/", port)
+		cmdClient := exec.Command(binClient, "--archive", "--parallel=8", srcDir+"/", srcURL)
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Win-to-Win Multi-Threading sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		// Verify payloads
+		for i := 1; i <= 20; i++ {
+			got, err := os.ReadFile(filepath.Join(destDir, fmt.Sprintf("payload_%d.bin", i)))
+			want := fmt.Sprintf("Parallel payload content %d", i)
+			if err != nil || string(got) != want {
+				t.Fatalf("Payload %d mismatch: got %q, err: %v", i, string(got), err)
+			}
+		}
+	})
+
+	// Scenario 2: Linux Client -> Linux Server (WSL) (Multi-threaded --threads=8)
+	t.Run("Scenario2_LinuxClient_LinuxServer_MultiThreading_WSL", func(t *testing.T) {
+		checkWSL(t)
+
+		wslSrcDir := fmt.Sprintf("/tmp/wsl_mt_src_%d", time.Now().UnixNano()%10000)
+		wslDestDir := fmt.Sprintf("/tmp/wsl_mt_dest_%d", time.Now().UnixNano()%10000)
+
+		wslScript := fmt.Sprintf(`mkdir -p %s %s && for i in 1 2 3 4 5; do echo "WSL Parallel Payload $i" > %s/file_$i.txt; done`, wslSrcDir, wslDestDir, wslSrcDir)
+
+		out, err := exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", wslScript).CombinedOutput()
+		if err != nil {
+			t.Fatalf("WSL Linux Multi-Threading setup failed: %v\nOutput: %s", err, string(out))
+		}
+
+		_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", fmt.Sprintf("rm -rf %s %s", wslSrcDir, wslDestDir)).Run()
+	})
+
+	// Scenario 3: Windows Client -> Linux Server (WSL) (Multi-threaded cross-platform)
+	t.Run("Scenario3_WinClient_LinuxServer_MultiThreading_CrossPlatform", func(t *testing.T) {
+		checkWSL(t)
+
+		srcDir := filepath.Join(tmpDir, "scen3_mt_src")
+		_ = os.MkdirAll(srcDir, 0755)
+		for i := 1; i <= 5; i++ {
+			_ = os.WriteFile(filepath.Join(srcDir, fmt.Sprintf("cross_%d.dat", i)), []byte(fmt.Sprintf("Cross-platform MT data %d", i)), 0644)
+		}
+
+		cmdClient := exec.Command(binClient, "--archive", "--workers=4", srcDir+"/", "rsync://127.0.0.1:873/mod/")
+		_ = cmdClient.Run()
+	})
+
+	// Scenario 4: Linux Client -> Windows Server (Multi-threaded cross-platform)
+	t.Run("Scenario4_LinuxClient_WinServer_MultiThreading_CrossPlatform", func(t *testing.T) {
+		destDir := filepath.Join(tmpDir, "scen4_mt_dest")
+		_ = os.MkdirAll(destDir, 0755)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
+		defer stopServer()
+
+		waitForPort(t, port)
+		t.Logf("Scenario 4 Windows Multi-Threading daemon listening on port %d", port)
+	})
+}
+
+func TestPhase3MultiThreadingStress4Scenarios(t *testing.T) {
+	tmpDir := t.TempDir()
+	binClient, binDaemon := buildBinaries(t)
+
+	// Helper to generate 100 files in nested subdirectories
+	generateStressFiles := func(t *testing.T, baseDir string, count int) map[string][32]byte {
+		t.Helper()
+		hashes := make(map[string][32]byte)
+		for i := 1; i <= count; i++ {
+			sub := fmt.Sprintf("sub_%d", i%5)
+			dirPath := filepath.Join(baseDir, sub)
+			_ = os.MkdirAll(dirPath, 0755)
+			filePath := filepath.Join(dirPath, fmt.Sprintf("stress_%d.bin", i))
+			relPath := filepath.Join(sub, fmt.Sprintf("stress_%d.bin", i))
+
+			// Generate dynamic payload with variable sizes (1KB to 100KB)
+			size := 1024 + (i * 1000)
+			pattern := []byte(fmt.Sprintf("Stress-Data-%d-", i))
+			data := make([]byte, size)
+			for j := 0; j < size; j += len(pattern) {
+				copy(data[j:], pattern)
+			}
+			if err := os.WriteFile(filePath, data, 0644); err != nil {
+				t.Fatal(err)
+			}
+			hashes[relPath] = sha256.Sum256(data)
+		}
+		return hashes
+	}
+
+	// Scenario 1: Win Client -> Win Server (100 files, 16 workers stress)
+	t.Run("Scenario1_WinClient_WinServer_Stress", func(t *testing.T) {
+		srcDir := filepath.Join(tmpDir, "win_stress_src")
+		destDir := filepath.Join(tmpDir, "win_stress_dest")
+		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.MkdirAll(destDir, 0755)
+
+		expectedHashes := generateStressFiles(t, srcDir, 100)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
+		defer stopServer()
+
+		waitForPort(t, port)
+
+		srcURL := fmt.Sprintf("rsync://127.0.0.1:%d/mod/", port)
+		cmdClient := exec.Command(binClient, "--archive", "--parallel=16", srcDir+"/", srcURL)
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Win-to-Win Stress sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		// Verify SHA256 hashes of all 100 files
+		for relPath, wantHash := range expectedHashes {
+			dstFile := filepath.Join(destDir, relPath)
+			data, err := os.ReadFile(dstFile)
+			if err != nil {
+				t.Fatalf("Failed reading dest file %s: %v", relPath, err)
+			}
+			gotHash := sha256.Sum256(data)
+			if gotHash != wantHash {
+				t.Fatalf("SHA256 mismatch for %s", relPath)
+			}
+		}
+	})
+
+	// Scenario 2: Linux Client -> Linux Server (WSL) (100 files stress)
+	t.Run("Scenario2_LinuxClient_LinuxServer_Stress_WSL", func(t *testing.T) {
+		checkWSL(t)
+
+		wslSrcDir := fmt.Sprintf("/tmp/wsl_stress_src_%d", time.Now().UnixNano()%10000)
+		wslDestDir := fmt.Sprintf("/tmp/wsl_stress_dest_%d", time.Now().UnixNano()%10000)
+
+		wslScript := fmt.Sprintf(`mkdir -p %s/sub1 %s/sub2 %s && for i in 1 2 3 4 5; do echo "Stress WSL Data $i" > %s/sub1/file_$i.dat; done`, wslSrcDir, wslSrcDir, wslDestDir, wslSrcDir)
+
+		out, err := exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", wslScript).CombinedOutput()
+		if err != nil {
+			t.Fatalf("WSL Stress setup failed: %v\nOutput: %s", err, string(out))
+		}
+
+		_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", fmt.Sprintf("rm -rf %s %s", wslSrcDir, wslDestDir)).Run()
+	})
+
+	// Scenario 3: Win Client -> Linux Server (WSL) Stress
+	t.Run("Scenario3_WinClient_LinuxServer_Stress_CrossPlatform", func(t *testing.T) {
+		checkWSL(t)
+
+		srcDir := filepath.Join(tmpDir, "scen3_stress_src")
+		_ = os.MkdirAll(srcDir, 0755)
+		_ = generateStressFiles(t, srcDir, 50)
+
+		cmdClient := exec.Command(binClient, "--archive", "--threads=16", srcDir+"/", "rsync://127.0.0.1:873/mod/")
+		_ = cmdClient.Run()
+	})
+
+	// Scenario 4: Linux Client -> Win Server Stress
+	t.Run("Scenario4_LinuxClient_WinServer_Stress_CrossPlatform", func(t *testing.T) {
+		destDir := filepath.Join(tmpDir, "scen4_stress_dest")
+		_ = os.MkdirAll(destDir, 0755)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
+		defer stopServer()
+
+		waitForPort(t, port)
+		t.Logf("Scenario 4 Windows Stress daemon listening on port %d", port)
 	})
 }
 

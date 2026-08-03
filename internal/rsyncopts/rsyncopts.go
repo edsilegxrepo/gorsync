@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -350,6 +351,7 @@ type Options struct {
 	tls_cert     string
 	tls_key      string
 	tls_insecure int
+	workers      int
 }
 
 type priority int
@@ -774,6 +776,13 @@ func (o *Options) SetTLSInsecure(v bool) {
 		o.tls_insecure = 0
 	}
 }
+func (o *Options) WorkerCount() int {
+	if o.workers > 0 {
+		return o.workers
+	}
+	return runtime.NumCPU() * 2
+}
+func (o *Options) SetWorkers(n int) { o.workers = n }
 func (o *Options) XferDirs() int              { return o.xfer_dirs }
 func (o *Options) FilterRules() []string      { return o.filterRules }
 func (o *Options) Progress() bool {
@@ -1074,6 +1083,9 @@ func (o *Options) gokrazyTable() []poptOption {
 		{"tls-cert", "", POPT_ARG_STRING, &o.tls_cert, 0},
 		{"tls-key", "", POPT_ARG_STRING, &o.tls_key, 0},
 		{"tls-insecure", "", POPT_ARG_NONE, &o.tls_insecure, 0},
+		{"workers", "", POPT_ARG_INT, &o.workers, 0},
+		{"threads", "", POPT_ARG_INT, &o.workers, 0},
+		{"parallel", "", POPT_ARG_INT, &o.workers, 0},
 		//{"early-input", "", POPT_ARG_STRING, &o.early_input_file, 0},
 		//{"blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 1},
 		//{"no-blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 0},
@@ -1338,6 +1350,9 @@ func (o *Options) tridgeTable() []poptOption {
 		{"tls-cert", "", POPT_ARG_STRING, &o.tls_cert, 0},
 		{"tls-key", "", POPT_ARG_STRING, &o.tls_key, 0},
 		{"tls-insecure", "", POPT_ARG_NONE, &o.tls_insecure, 0},
+		{"workers", "", POPT_ARG_INT, &o.workers, 0},
+		{"threads", "", POPT_ARG_INT, &o.workers, 0},
+		{"parallel", "", POPT_ARG_INT, &o.workers, 0},
 		{"early-input", "", POPT_ARG_STRING, &o.early_input_file, 0},
 		{"blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 1},
 		{"no-blocking-io", "", POPT_ARG_VAL, &o.blocking_io, 0},

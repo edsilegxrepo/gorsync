@@ -23,6 +23,7 @@ import (
 
 	"github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets"
 	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/rsync/internal/parallel"
 	"github.com/edsilegxrepo/rsync/internal/log"
 	"github.com/edsilegxrepo/rsync/internal/progress"
 	"github.com/edsilegxrepo/rsync/internal/receiver"
@@ -667,6 +668,7 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 			}
 		}
 		remoteAddr := conn.RemoteAddr()
+		parallel.TuneSocketBuffers(conn)
 		s.logger.Printf("remote connection from %s", remoteAddr)
 		go func() {
 			defer conn.Close()

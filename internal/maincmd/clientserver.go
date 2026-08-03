@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/rsync/internal/parallel"
 	"github.com/edsilegxrepo/rsync/internal/restrict"
 	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
 	"github.com/edsilegxrepo/rsync/internal/rsyncos"
@@ -60,6 +61,7 @@ func socketClient(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Optio
 		return nil, err
 	}
 	defer conn.Close()
+	parallel.TuneSocketBuffers(conn)
 
 	if opts.TLS() || strings.HasPrefix(remotePath, "rsyncts://") || strings.HasPrefix(host, "rsyncts://") {
 		tlsConfig := &tls.Config{

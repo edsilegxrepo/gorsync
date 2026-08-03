@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/rsync/internal/parallel"
 	"github.com/edsilegxrepo/rsync/internal/rsyncchecksum"
 	"github.com/edsilegxrepo/rsync/internal/rsynccommon"
 	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
@@ -206,7 +207,9 @@ func (st *Transfer) sendFile(fileIndex int32, fl file) error {
 	})
 
 	offset := 0
-	buf := make([]byte, chunkSize)
+	bufPtr := parallel.GetBuffer()
+	defer parallel.PutBuffer(bufPtr)
+	buf := *bufPtr
 	for {
 		if st.Opts.InfoGTE(rsyncopts.INFO_PROGRESS, 1) {
 			st.Progress.MaybeShow(uint64(offset), false)
