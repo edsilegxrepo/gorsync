@@ -219,4 +219,15 @@ func TestCheckForHostspec(t *testing.T) {
 			}
 		})
 	}
+
+	// Verify Windows drive letters are identified as local disk paths (return error)
+	for _, drivePath := range []string{"C:\\path", "C:/path", "F:/sub/path", "E:\\data\\file.txt"} {
+		t.Run("DriveLetter_"+drivePath, func(t *testing.T) {
+			_, _, _, err := checkForHostspec(drivePath)
+			if err == nil {
+				t.Fatalf("expected error for local drive path %q, got nil", drivePath)
+			}
+		})
+	}
 }
+
