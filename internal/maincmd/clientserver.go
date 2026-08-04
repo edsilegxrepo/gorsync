@@ -156,7 +156,11 @@ func StartInbandExchange(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.Re
 	rd := bufio.NewReader(conn)
 
 	// send client greeting
-	fmt.Fprintf(conn, "@RSYNCD: %d\n", rsync.ProtocolVersion)
+	proto := rsync.MaxProtocolVersion
+	if p := opts.ProtocolVersion(); p > 0 {
+		proto = p
+	}
+	fmt.Fprintf(conn, "@RSYNCD: %d.0\n", proto)
 
 	// read server greeting
 	serverGreeting, err := rd.ReadString('\n')
@@ -168,7 +172,7 @@ func StartInbandExchange(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.Re
 	if !strings.HasPrefix(serverGreeting, serverGreetingPrefix) {
 		return false, fmt.Errorf("invalid server greeting: got %q", serverGreeting)
 	}
-	// protocol negotiation: require at least version 27
+	// protocol negotiation
 	serverGreeting = strings.TrimPrefix(serverGreeting, serverGreetingPrefix)
 	var remoteProtocol, remoteSub int32
 	if _, err := fmt.Sscanf(serverGreeting, "%d.%d", &remoteProtocol, &remoteSub); err != nil {

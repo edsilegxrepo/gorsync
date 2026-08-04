@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"unicode"
 
+	"github.com/edsilegxrepo/rsync"
 	"github.com/edsilegxrepo/rsync/internal/rsyncos"
 	"github.com/edsilegxrepo/rsync/internal/version"
 )
@@ -352,6 +353,13 @@ type Options struct {
 	tls_key      string
 	tls_insecure int
 	workers      int
+}
+
+func (o *Options) ProtocolVersion() int {
+	if o != nil && o.protocol_version > 0 {
+		return o.protocol_version
+	}
+	return rsync.ProtocolVersion
 }
 
 type priority int
@@ -1333,6 +1341,7 @@ func (o *Options) tridgeTable() []poptOption {
 		{"no-iconv", "", POPT_ARG_NONE, nil, OPT_NO_ICONV},
 		{"ipv4", "4", POPT_ARG_VAL, &o.default_af_hint, syscall.AF_INET},
 		{"ipv6", "6", POPT_ARG_VAL, &o.default_af_hint, syscall.AF_INET6},
+		{"protocol", "", POPT_ARG_INT, &o.protocol_version, 0},
 		{"8-bit-output", "8", POPT_ARG_VAL, &o.allow_8bit_chars, 1},
 		{"no-8-bit-output", "", POPT_ARG_VAL, &o.allow_8bit_chars, 0},
 		{"no-8", "", POPT_ARG_VAL, &o.allow_8bit_chars, 0},

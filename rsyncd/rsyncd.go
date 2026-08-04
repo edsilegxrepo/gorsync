@@ -261,7 +261,7 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 	rd := conn.rd
 	// send server greeting
 
-	fmt.Fprintf(cwr, "@RSYNCD: %d\n", rsync.ProtocolVersion)
+	fmt.Fprintf(cwr, "@RSYNCD: %d.0\n", rsync.MaxProtocolVersion)
 
 	// read client greeting
 	clientGreeting, err := rd.ReadString('\n')
@@ -271,7 +271,17 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 	if !strings.HasPrefix(clientGreeting, "@RSYNCD: ") {
 		return fmt.Errorf("invalid client greeting: got %q", clientGreeting)
 	}
-	// TODO: protocol negotiation
+
+	var remoteProtocol int
+	_, _ = fmt.Sscanf(clientGreeting, "@RSYNCD: %d", &remoteProtocol)
+	negotiatedProtocol := remoteProtocol
+	if negotiatedProtocol > rsync.MaxProtocolVersion {
+		negotiatedProtocol = rsync.MaxProtocolVersion
+	}
+	if negotiatedProtocol < 20 {
+		negotiatedProtocol = 20
+	}
+	s.logger.Printf("negotiated protocol version: %d (remote: %d)", negotiatedProtocol, remoteProtocol)
 
 	// read requested module(s), if any
 	requestedModule, err := rd.ReadString('\n')
