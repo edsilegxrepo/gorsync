@@ -94,6 +94,7 @@ sequenceDiagram
 
 ### Environment Variables & Constraints
 - **`TEMP` / `TMP`**: Windows temporary directory (defaults to `%TEMP%`). Test artifacts reside inside `t.TempDir()`.
+- **`OPENSSH_HOME`**: Evaluated during OpenSSH binary path resolution on Windows (prioritizing `%OPENSSH_HOME%\ssh.exe`, fallback to `D:\inetd\sshd\ssh.exe`, and standard `PATH`).
 - **`RSYNC_PASSWORD`**: Evaluated during daemon challenge-response authentication tests.
 - **Port Allocation**: Dynamic ephemeral port binding via `net.Listen("tcp", "127.0.0.1:0")` to prevent port collisions during parallel test runs.
 
