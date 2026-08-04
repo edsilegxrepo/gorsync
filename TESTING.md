@@ -129,8 +129,8 @@ sequenceDiagram
 | Protocol Version | Introduced In | Default Upstream Release | Key Protocol Feature Set | Code Implementation | Test Verification |
 | :---: | :--- | :--- | :--- | :--- | :--- |
 | **Protocol 27** | `rsync 2.6.0` | `rsync 2.6.x` -- `2.6.9` | • Fixed 32-bit integer wire framing (`ReadInt32`/`WriteInt32`)<br>• Multiplexed error/data channel (`0x07` / `0x00`)<br>• MD4/MD5 16-byte fixed checksum digests<br>• Legacy file list exchange flags | [`internal/rsyncwire/wire.go`](internal/rsyncwire/wire.go)<br>[`internal/sender/flist.go`](internal/sender/flist.go) | **Unit Test**: `TestProtocol27Features` (**PASS**)<br>**Live Interop**: `TestE2EMatrixAndStress` (**PASS**) |
-| **Protocol 30/31** | `rsync 3.0.0` / `3.1.0` | `rsync 3.0.x` -- `3.3.x` | • 64-bit Variable-Length Integer Encoding (`ReadVarInt`/`WriteVarInt`)<br>• String-based Checksum Negotiation (`xxhash`, `sha1`, `md5`, `md4`)<br>• `--protocol=30` / `--protocol=31` flag parsing<br>• Checksum digest header expansion up to 32 bytes (`types.go`) | [`internal/rsyncwire/varint.go`](internal/rsyncwire/varint.go)<br>[`internal/rsyncchecksum/negotiation.go`](internal/rsyncchecksum/negotiation.go)<br>[`types.go`](types.go) | **Unit Test**: `TestProtocol30_31Features` (**PASS**)<br>**Live Interop**: `TestPhase5Protocol30_31_4Scenarios` (**PASS** across 4 scenarios with AlmaLinuxOS-9 `rsync 3.2.x`) |
-| **Protocol 32** | `rsync 3.4.0` | **`rsync 3.4.x`** | • 32-bit Variable-Length Integer Encoding (`ReadVarInt32`/`WriteVarInt32`)<br>• 64-bit Nanosecond Timestamp Precision (`ReadTime64`/`WriteTime64`)<br>• `MaxProtocolVersion = 32` ceiling declaration | [`internal/rsyncwire/varint.go`](internal/rsyncwire/varint.go)<br>[`consts.go`](consts.go) | **Unit Test**: `TestProtocol32Features` (**PASS**)<br>**Live Interop**: `TestPhase6Protocol32_4Scenarios` (**PASS** across 4 scenarios) |
+| **Protocol 30/31** | `rsync 3.0.0` / `3.1.0` | `rsync 3.0.x` -- `3.3.x` | • 64-bit Variable-Length Integer Encoding (`ReadVarInt`/`WriteVarInt`)<br>• String-based Checksum Negotiation (`xxhash`, `sha1`, `md5`, `md4`)<br>• `--protocol=30` / `--protocol=31` flag parsing<br>• Checksum digest header expansion up to 32 bytes (`types.go`) | [`internal/rsyncwire/varint.go`](internal/rsyncwire/varint.go)<br>[`internal/rsyncchecksum/negotiation.go`](internal/rsyncchecksum/negotiation.go)<br>[`types.go`](types.go) | **Unit Test**: `TestProtocol30_31Features` (**PASS**)<br>**Live Interop**: `TestPhase5Protocol30_31_4Scenarios` (**PASS** across 4 scenarios with AlmaLinuxOS-9) |
+| **Protocol 32** | `rsync 3.4.0` | **`rsync 3.4.x`** | • 32-bit Variable-Length Integer Encoding (`ReadVarInt32`/`WriteVarInt32`)<br>• 64-bit Nanosecond Timestamp Precision (`ReadTime64`/`WriteTime64`)<br>• `MaxProtocolVersion = 32` ceiling declaration | [`internal/rsyncwire/varint.go`](internal/rsyncwire/varint.go)<br>[`consts.go`](consts.go) | **Unit Test**: `TestProtocol32Features` (**PASS**)<br>**Live Interop**: `TestPhase6Protocol32_4Scenarios` (**PASS** across 4 scenarios with AlmaLinuxOS-10) |
 
 ---
 
@@ -143,14 +143,16 @@ sequenceDiagram
 | Package | Coverage (%) | Status | Description |
 | :--- | :--- | :--- | :--- |
 | `internal/version` | **100.0%** | PASS | Protocol versioning |
-| `internal/rsyncchecksum` | **88.9%** | PASS | Rolling & MD4 checksum calculation |
+| `internal/rsyncchecksum` | **88.9%** | PASS | Rolling & MD4/SHA256 checksum calculation |
 | `internal/progress` | **87.1%** | PASS | Progress calculation and terminal formatting |
-| `internal/rsyncwire` | **86.3%** | PASS | Protocol wire framing and multiplexing |
-| `integration/interop` | **85.4%** | PASS | Full engine cross-platform matrix suite |
+| `internal/rsyncwire` | **86.8%** | PASS | Protocol wire framing, varints, and multiplexing |
+| `internal/parallel` | **86.4%** | PASS | Multi-threading worker pool and buffer recycling |
+| `internal/rsyncsec` | **85.7%** | PASS | Protected secret encryption & RAM zeroing |
 | `internal/rsyncdconfig` | **85.0%** | PASS | TOML daemon config parsing |
 | `internal/receiver` | **84.6%** | PASS | Receiver generator and atomic file assembly |
-| `rsyncd` | **83.7%** | PASS | Rsync server daemon engine |
-| `internal/maincmd` | **83.2%** | PASS | CLI option routing and socket dialer |
+| `rsyncd` | **83.8%** | PASS | Rsync server daemon engine |
+| `internal/maincmd` | **83.6%** | PASS | CLI option routing, dialer, and exit codes |
+| `integration/interop` | **83.2%** | PASS | Full engine cross-platform matrix suite |
 | `internal/sender` | **82.8%** | PASS | Sender file list generation & delta match |
 | `internal/rsyncopts` | **82.4%** | PASS | Popt command-line option parser |
 | `rsyncclient` | **81.5%** | PASS | High-level Go client API |
