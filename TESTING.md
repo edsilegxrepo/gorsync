@@ -1,4 +1,4 @@
-# rsync Test Suite Documentation (`TESTING.md`)
+# gorsync Test Suite Documentation (`TESTING.md`)
 
 This document provides a comprehensive overview of the testing architecture, logical test flows, technical requirements, test index, code coverage metrics, realistic data simulation strategy, execution instructions, and maintenance guidelines for `rsync`.
 

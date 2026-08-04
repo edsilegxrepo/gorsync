@@ -1,4 +1,4 @@
-# rsync Operational & Product Guide (`README.md`)
+# gorsync Operational & Product Guide (`README.md`)
 
 This document provides product documentation, security assessment metrics, CLI argument references, usage examples, deployment configurations, and operational workflows for `rsync`.
 

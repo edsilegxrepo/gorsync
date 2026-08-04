@@ -1,4 +1,4 @@
-# rsync Architecture Specification (`ARCHITECTURE.md`)
+# gorsync Architecture Specification (`ARCHITECTURE.md`)
 
 This document defines the architectural specification, data flow logic, concurrency model, package dependency topology, and security model of `rsync`, a pure Go implementation of the `rsync` protocol suite (client, daemon, and embedded library).
 
