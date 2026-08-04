@@ -38,7 +38,7 @@ This document provides product documentation, security assessment metrics, CLI a
 
 ## 3. Code Quality Assessment & Best Practices
 
-- **Test Coverage**: Exceeds the workspace target with **>83.5% total engine statement coverage** (100% on `version`, 88.9% on `rsyncchecksum`, 86.3% on `rsyncwire`, 84.6% on `receiver`, 83.7% on `rsyncd`).
+- **Test Coverage**: Exceeds the workspace target with **>84.0% total engine statement coverage** (100% on `version`, 88.9% on `rsyncchecksum`, 86.8% on `rsyncwire`, 86.4% on `rsyncclient`, 84.6% on `receiver`, 83.8% on `rsyncd`, 83.6% on `maincmd`).
 - **Surgical Mutation Safety**: All code modifications are strictly scoped to avoid line deletion or regression bugs.
 - **Cross-Platform Parity**: Tested via automated end-to-end interop suites across 4 dataflow topologies (`Win Client -> Win Server`, `Linux Client -> Linux Server`, `Win Client -> Linux Server`, `Linux Client -> Win Server`).
 
@@ -70,6 +70,14 @@ This document provides product documentation, security assessment metrics, CLI a
 | `--size-only` | `bool` | `false` | Skips transfers whenever destination file sizes match. |
 | `--delete` | `bool` | `false` | Deletes extraneous files from target directory. |
 | `--exclude` | `string` | `""` | Excludes files matching wildcard pattern (e.g. `--exclude=*.bak`). |
+| `--parallel` | `bool` | `false` | Enables multi-threaded parallel file transfer pipeline. |
+| `--workers`, `--threads` | `int` | `2*NumCPU` | Number of worker goroutines for parallel hash computation and file IO. |
+| `--protocol` | `int` | `27` | Forces protocol version override (supported: 27, 30, 31, 32). |
+| `--tls` | `bool` | `false` | Enables TLS transport encryption (`rsyncts://`). |
+| `--tls-ca` | `string` | `""` | Path to TLS Client CA certificate file for mTLS validation. |
+| `--tls-cert` | `string` | `""` | Path to TLS client/server certificate file. |
+| `--tls-key` | `string` | `""` | Path to TLS client/server private key file. |
+| `--tls-insecure` | `bool` | `false` | Disables TLS certificate verification (for testing only). |
 | `--bwlimit` | `int` | `0` | Rate limits bandwidth transfer in KiB/s. |
 | `--timeout` | `int` | `0` | Sets socket I/O deadline in seconds to prevent stalls. |
 | `--temp-dir`, `-T` | `string` | `""` | Stages incoming files inside a temporary directory before atomic rename. |
@@ -177,7 +185,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/gokrazy/rsync/rsyncclient"
+	"github.com/edsilegxrepo/rsync/rsyncclient"
 )
 
 func main() {

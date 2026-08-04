@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Module & Cmd Restructuring**: Updated Go module path to `github.com/edsilegxrepo/rsync` and reorganized binary executables into standard Go layout (`cmd/rsync/main.go` and `cmd/rsyncd/main.go`).
 
 ### Fixed
+- **Code Audit & Security Hardening Remediation**: Resolved Gosec static security findings across all 5 audit phases (0 security issues remaining). Added `http.Server` with `ReadHeaderTimeout: 5 * time.Second` in `maincmd.go` to prevent Slowloris attacks, fixed listener cleanup in `rsynctest.go`, and added audited `#nosec` annotations with root-cause justifications for SSH process launching, TLS/daemon config reading, and file/directory permission bits.
 - **Socket Listener Leak in Test Server Helper**: Fixed socket listener cleanup in `internal/rsynctest/rsynctest.go` by registering `t.Cleanup(func() { ts.listener.Close() })` for all custom listeners passed via `rsynctest.Listener(ln)`, resolving orphaned listener sockets and background test hangs.
 
 ## [v0.3.5] - 2026-08-03

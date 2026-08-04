@@ -48,15 +48,16 @@ graph TD
 ```
 
 ### Key Design Choices
-1. **Pure Go Rsync Protocol Suite**: Implements rsync protocol version 27 natively in Go without C dependencies or shell executions.
+1. **Pure Go Rsync Protocol Suite**: Implements rsync protocols 27, 30/31, and 32 natively in Go without C dependencies or shell executions.
 2. **FileSystem Abstraction (`rsync.WritableFS`)**: Abstracts file system mutations so targets can write directly to disk via `os.Root` or into pure in-memory, S3, or database backends.
 3. **OS-Enforced Jail Isolation**: Utilizes Go 1.24+ `os.OpenRoot` handles on Windows/unprivileged Linux and `pivot_root` mount namespaces under root Linux.
-4. **Structured Multiplex Framing**: Demultiplexes out-of-band messages (`MsgErrorXfer`, `MsgInfo`, `MsgWarning`) from inline file binary data cleanly over a single TCP/SSH stream.
+4. **Structured Multiplex Framing**: Demultiplexes out-of-band messages (`MsgErrorXfer`, `MsgInfo`, `MsgWarning`) from inline file binary data cleanly over a single TCP/SSH/TLS stream.
+5. **Standard Exit Code Taxonomy**: Returns standard `rsync(1)` exit codes (`0` ok, `1` syntax, `2` protocol, `3` file select, `5` client start, `10` socket IO, `11` file IO, `20` signal) wrapped via `ExitError`.
 
 ### Key Assumptions
-- Network streams operate over reliable stream connections (TCP socket or SSH pipe).
-- Wire protocol defaults to version 27 (`@RSYNCD: 27.0` compatibility).
-- Time resolution adheres to Unix timestamp seconds (`mtime`).
+- Network streams operate over reliable stream connections (TCP socket, TLS session, or SSH pipe).
+- Wire protocol defaults to version 27 (`@RSYNCD: 27.0` compatibility) with automatic negotiation up to Protocol 32 (`rsync 3.4.x` / `AlmaLinuxOS-10`).
+- Time resolution adheres to Unix timestamp seconds (`mtime`) with 64-bit nanosecond extensions in Protocol 32.
 
 ### Edge Cases Handled
 - **Unprivileged Windows Symlinks**: If `os.Symlink` fails due to missing `SeCreateSymbolicLinkPrivilege`, errors are caught gracefully without terminating the session.
