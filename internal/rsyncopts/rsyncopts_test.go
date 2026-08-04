@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncostest"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncostest"
 	"github.com/google/go-cmp/cmp"
 )
 

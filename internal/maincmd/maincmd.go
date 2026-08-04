@@ -30,13 +30,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/edsilegxrepo/rsync/internal/anonssh"
-	"github.com/edsilegxrepo/rsync/internal/restrict"
-	"github.com/edsilegxrepo/rsync/internal/rsyncdconfig"
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
-	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
-	"github.com/edsilegxrepo/rsync/rsyncd"
+	"github.com/edsilegxrepo/gorsync/internal/anonssh"
+	"github.com/edsilegxrepo/gorsync/internal/restrict"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncdconfig"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/gorsync/rsyncd"
 
 	// For profiling and debugging
 	_ "net/http/pprof" // #nosec G108 -- profiling endpoint import for optional daemon monitoring

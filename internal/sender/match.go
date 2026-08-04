@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/edsilegxrepo/rsync"
-	"github.com/edsilegxrepo/rsync/internal/rsyncchecksum"
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncchecksum"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
 	"github.com/mmcloughlin/md4"
 )
 

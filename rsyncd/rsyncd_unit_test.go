@@ -8,7 +8,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/edsilegxrepo/rsync/rsyncd"
+	"github.com/edsilegxrepo/gorsync/rsyncd"
 )
 
 func TestNewServerValidation(t *testing.T) {

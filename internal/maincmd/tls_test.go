@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncostest"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncostest"
 )
 
 func generateTestTLSCert(t *testing.T, dir string) (certPath, keyPath string) {

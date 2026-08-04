@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edsilegxrepo/rsync/rsyncd"
+	"github.com/edsilegxrepo/gorsync/rsyncd"
 )
 
 func generateCertKeyWithCN(cn string, isCA bool, parentCert *x509.Certificate, parentKey *ecdsa.PrivateKey) ([]byte, []byte, *x509.Certificate, *ecdsa.PrivateKey, error) {

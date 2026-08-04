@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edsilegxrepo/rsync/rsyncd"
+	"github.com/edsilegxrepo/gorsync/rsyncd"
 )
 
 func generateTestCertKeyPair(t *testing.T, dir string) (certPath, keyPath string) {

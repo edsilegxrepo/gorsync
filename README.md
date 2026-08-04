@@ -185,7 +185,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/edsilegxrepo/rsync/rsyncclient"
+	"github.com/edsilegxrepo/gorsync/rsyncclient"
 )
 
 func main() {

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
-	"github.com/edsilegxrepo/rsync/internal/sender"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync/internal/sender"
 )
 
 func TestSenderDoWithMapFS(t *testing.T) {

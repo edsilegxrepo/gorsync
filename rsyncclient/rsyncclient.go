@@ -24,12 +24,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/edsilegxrepo/rsync/internal/maincmd"
-	"github.com/edsilegxrepo/rsync/internal/receiver"
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
-	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync/internal/maincmd"
+	"github.com/edsilegxrepo/gorsync/internal/receiver"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 )
 
 // Option specifies the client options.

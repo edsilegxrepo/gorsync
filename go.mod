@@ -1,4 +1,4 @@
-module github.com/edsilegxrepo/rsync
+module github.com/edsilegxrepo/gorsync
 
 go 1.25.0
 

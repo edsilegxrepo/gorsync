@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncsec"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncsec"
 	"github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets"
 	"github.com/mmcloughlin/md4"
 )

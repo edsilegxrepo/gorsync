@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/edsilegxrepo/rsync/internal/restrict"
+	"github.com/edsilegxrepo/gorsync/internal/restrict"
 )
 
 func restrictToModules(modules []Module) error {

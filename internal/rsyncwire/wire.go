@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
 )
 
 // Multiplex message tags, mirroring rsync.h's MSG_* constants. MSG_ERROR_XFER

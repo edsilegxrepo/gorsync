@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/edsilegxrepo/rsync"
-	"github.com/edsilegxrepo/rsync/internal/parallel"
-	"github.com/edsilegxrepo/rsync/internal/restrict"
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
-	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/gorsync"
+	"github.com/edsilegxrepo/gorsync/internal/parallel"
+	"github.com/edsilegxrepo/gorsync/internal/restrict"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncstats"
 )
 
 // rsync/clientserver.c:start_socket_client

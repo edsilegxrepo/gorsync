@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/edsilegxrepo/rsync"
-	"github.com/edsilegxrepo/rsync/internal/rsyncchecksum"
-	"github.com/edsilegxrepo/rsync/internal/rsynccommon"
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncchecksum"
+	"github.com/edsilegxrepo/gorsync/internal/rsynccommon"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
 )
 
 // rsync/generator.c:generate_files()

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/gorsync"
 	"golang.org/x/sys/unix"
 )
 

@@ -17,8 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncdconfig"
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncdconfig"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
 	"github.com/google/shlex"
 	"golang.org/x/crypto/ssh"
 )

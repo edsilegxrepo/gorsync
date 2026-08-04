@@ -3,7 +3,7 @@ package rsync
 import (
 	"fmt"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 )
 
 // SumBuf represents a single block checksum tuple (Adler32 fast sum1 + MD4/MD5/SHA256 strong sum2)

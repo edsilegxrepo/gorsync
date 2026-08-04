@@ -3,11 +3,11 @@ package sender
 import (
 	"io"
 
-	"github.com/edsilegxrepo/rsync/internal/log"
-	"github.com/edsilegxrepo/rsync/internal/progress"
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync/internal/log"
+	"github.com/edsilegxrepo/gorsync/internal/progress"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 )
 
 type Osenv struct {

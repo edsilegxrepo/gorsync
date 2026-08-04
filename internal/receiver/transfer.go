@@ -3,12 +3,12 @@ package receiver
 import (
 	"os"
 
-	"github.com/edsilegxrepo/rsync"
-	"github.com/edsilegxrepo/rsync/internal/log"
-	"github.com/edsilegxrepo/rsync/internal/progress"
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync"
+	"github.com/edsilegxrepo/gorsync/internal/log"
+	"github.com/edsilegxrepo/gorsync/internal/progress"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 )
 
 // TransferOpts is a subset of Opts which is required for implementing a receiver.

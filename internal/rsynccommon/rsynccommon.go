@@ -5,7 +5,7 @@ package rsynccommon
 import (
 	"math"
 
-	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/gorsync"
 )
 
 const blockSize = 700 // rsync/rsync.h

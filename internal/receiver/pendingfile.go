@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/edsilegxrepo/rsync"
+	"github.com/edsilegxrepo/gorsync"
 )
 
 type pendingFile interface {

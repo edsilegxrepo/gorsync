@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/edsilegxrepo/rsync/internal/rsynctest"
-	"github.com/edsilegxrepo/rsync/internal/testlogger"
+	"github.com/edsilegxrepo/gorsync/internal/rsynctest"
+	"github.com/edsilegxrepo/gorsync/internal/testlogger"
 )
 
 func TestDaemonReceiverSync(t *testing.T) {

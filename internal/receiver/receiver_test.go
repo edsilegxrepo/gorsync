@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edsilegxrepo/rsync"
-	golog "github.com/edsilegxrepo/rsync/internal/log"
-	"github.com/edsilegxrepo/rsync/internal/receiver"
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync"
+	golog "github.com/edsilegxrepo/gorsync/internal/log"
+	"github.com/edsilegxrepo/gorsync/internal/receiver"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 )
 
 // memFS implements rsync.WritableFS for in-memory mock testing

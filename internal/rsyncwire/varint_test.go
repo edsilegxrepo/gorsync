@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 )
 
 func TestVarIntRoundTrip(t *testing.T) {

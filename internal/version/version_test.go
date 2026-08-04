@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/edsilegxrepo/rsync/internal/version"
+	"github.com/edsilegxrepo/gorsync/internal/version"
 )
 
 func TestReadVersion(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"syscall"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncos"
 )
 
 func dropPrivileges(osenv *rsyncos.Env) error {

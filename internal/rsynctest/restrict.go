@@ -3,7 +3,7 @@ package rsynctest
 import (
 	"os"
 
-	"github.com/edsilegxrepo/rsync/internal/restrict"
+	"github.com/edsilegxrepo/gorsync/internal/restrict"
 	"github.com/landlock-lsm/go-landlock/landlock"
 )
 

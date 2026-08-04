@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edsilegxrepo/rsync/internal/parallel"
+	"github.com/edsilegxrepo/gorsync/internal/parallel"
 )
 
 func TestBufferPool(t *testing.T) {

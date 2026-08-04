@@ -5,7 +5,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/edsilegxrepo/rsync/internal/log"
+	"github.com/edsilegxrepo/gorsync/internal/log"
 )
 
 type Env struct {

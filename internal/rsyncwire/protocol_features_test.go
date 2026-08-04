@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edsilegxrepo/rsync"
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 )
 
 // TestProtocol27Features tests Protocol 27 legacy wire encoding mechanics.

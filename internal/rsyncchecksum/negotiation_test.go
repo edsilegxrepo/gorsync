@@ -3,7 +3,7 @@ package rsyncchecksum_test
 import (
 	"testing"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncchecksum"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncchecksum"
 )
 
 func TestNegotiateChecksumAlgorithm(t *testing.T) {

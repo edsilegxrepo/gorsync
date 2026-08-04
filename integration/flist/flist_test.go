@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/edsilegxrepo/rsync/internal/rsynctest"
-	"github.com/edsilegxrepo/rsync/rsyncd"
+	"github.com/edsilegxrepo/gorsync/internal/rsynctest"
+	"github.com/edsilegxrepo/gorsync/rsyncd"
 )
 
 // rsynctest.go:282: length 280063 exceeds max message size (262144)

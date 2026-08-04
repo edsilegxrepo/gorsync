@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncchecksum"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncchecksum"
 )
 
 func constructLargeDataFile(headPattern, bodyPattern, endPattern []byte) []byte {

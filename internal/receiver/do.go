@@ -5,9 +5,9 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
-	"github.com/edsilegxrepo/rsync/internal/rsyncstats"
-	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncstats"
+	"github.com/edsilegxrepo/gorsync/internal/rsyncwire"
 )
 
 // rsync/main.c:handle_stats
