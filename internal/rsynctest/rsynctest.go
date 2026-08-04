@@ -119,9 +119,9 @@ func New(t *testing.T, modules []rsyncd.Module, opts ...Option) *TestServer {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { ln.Close() })
 		ts.listener = ln
 	}
+	t.Cleanup(func() { ts.listener.Close() })
 
 	t.Logf("listening on %s", ts.listener.Addr())
 	_, port, err := net.SplitHostPort(ts.listener.Addr().String())
@@ -259,7 +259,7 @@ func (ts *TestServer) pipe(t *testing.T, args []string) (*sync.WaitGroup, io.Rea
 	stdoutrd, stdoutwr := io.Pipe()
 	conn := rsyncd.NewConnection(stdinrd, stdoutwr, "<io.Pipe>")
 	osenv := rsyncostest.New(t)
-	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithGokrazyDefaults(osenv))
+	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithDefaults(osenv))
 	if err := pc.ParseArguments(osenv, args); err != nil {
 		t.Fatalf("parsing server args: %v", err)
 	}
