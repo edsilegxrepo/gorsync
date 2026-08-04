@@ -1789,7 +1789,7 @@ func TestPhase8SSH4Scenarios(t *testing.T) {
 		hostIP := getWSLHostIP()
 
 		sshOpt := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null -p %d", wslTmpKey, port)
-		cmdWSL := exec.Command("wsl.exe", "--cd", "/tmp", "rsync", "-av", "--rsync-path="+binClient, "-e", sshOpt, wslSrcFile, fmt.Sprintf("%s@%s:%s/", os.Getenv("USERNAME"), hostIP, dstDir))
+		cmdWSL := exec.Command("wsl.exe", "--cd", "/tmp", "rsync", "-av", "--rsync-path="+filepath.ToSlash(binClient), "-e", sshOpt, wslSrcFile, fmt.Sprintf("%s@%s:%s/", os.Getenv("USERNAME"), hostIP, toWSLPath(dstDir)))
 		out, err := cmdWSL.CombinedOutput()
 		if err != nil {
 			t.Fatalf("Real OpenSSH WSL Linux-to-Linux sync failed: %v\nOutput: %s", err, string(out))
@@ -1851,8 +1851,11 @@ func TestPhase8SSH4Scenarios(t *testing.T) {
 		destFile := filepath.Join(dstDir, "real_ssh_linux_win4.txt")
 		hostIP := getWSLHostIP()
 
+		binClientWinSlash := filepath.ToSlash(binClient)
+		dstDirWinSlash := filepath.ToSlash(dstDir)
+
 		sshOpt := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null -p %d", wslTmpKey, port)
-		cmdWSL := exec.Command("wsl.exe", "--cd", "/tmp", "rsync", "-av", "--rsync-path="+binClient, "-e", sshOpt, wslSrcFile, fmt.Sprintf("%s@%s:%s/", os.Getenv("USERNAME"), hostIP, dstDir))
+		cmdWSL := exec.Command("wsl.exe", "--cd", "/tmp", "rsync", "-av", "--rsync-path="+binClientWinSlash, "-e", sshOpt, wslSrcFile, fmt.Sprintf("%s@%s:%s/", os.Getenv("USERNAME"), hostIP, dstDirWinSlash))
 		out, err := cmdWSL.CombinedOutput()
 		if err != nil {
 			t.Fatalf("Real OpenSSH WSL Linux-to-Win sync failed: %v\nOutput: %s", err, string(out))

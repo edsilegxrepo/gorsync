@@ -28,6 +28,19 @@ func checkWSL(t *testing.T) {
 }
 
 func getWSLHostIP() string {
+	if ifaces, err := net.Interfaces(); err == nil {
+		for _, iface := range ifaces {
+			if strings.Contains(strings.ToLower(iface.Name), "wsl") {
+				if addrs, err := iface.Addrs(); err == nil {
+					for _, addr := range addrs {
+						if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+							return ipnet.IP.String()
+						}
+					}
+				}
+			}
+		}
+	}
 	out, err := exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", "grep nameserver /etc/resolv.conf | head -n 1 | cut -d ' ' -f 2").Output()
 	if err == nil && len(bytes.TrimSpace(out)) > 0 {
 		return string(bytes.TrimSpace(out))

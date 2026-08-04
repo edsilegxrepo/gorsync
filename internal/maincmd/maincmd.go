@@ -27,6 +27,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -137,6 +139,9 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 			return nil, fmt.Errorf("protocol error: got %q, expected %q", got, want)
 		}
 		paths := remaining[1:]
+		for i, p := range paths {
+			paths[i] = normalizePath(p)
+		}
 		if opts.Verbose() {
 			osenv.Logf("paths: %q", paths)
 		}
@@ -394,3 +399,15 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 	osenv.Logf("rsync daemon listening on rsync://%s", ln.Addr())
 	return nil, srv.Serve(ctx, ln)
 }
+
+func normalizePath(p string) string {
+	if runtime.GOOS == "windows" {
+		p = filepath.ToSlash(p)
+		if strings.HasPrefix(p, "/mnt/") && len(p) >= 6 && p[6] == '/' {
+			drive := strings.ToUpper(string(p[5]))
+			return drive + ":" + p[6:]
+		}
+	}
+	return p
+}
+
