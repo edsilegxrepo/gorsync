@@ -155,9 +155,9 @@ sequenceDiagram
 | `integration/interop` | **83.2%** | PASS | Full engine cross-platform matrix suite |
 | `internal/sender` | **82.8%** | PASS | Sender file list generation & delta match |
 | `internal/rsyncopts` | **82.4%** | PASS | Popt command-line option parser |
-| `rsyncclient` | **81.5%** | PASS | High-level Go client API |
+| `rsyncclient` | **86.4%** | PASS | High-level Go client API |
 | `internal/log` | **67.5%** | PASS | Debug logger wrapper |
-| **Total Workspace Engine** | **>83.5%** | **PASS** | **Exceeds 80.0% Requirement** |
+| **Total Workspace Engine** | **>84.0%** | **PASS** | **Exceeds 80.0% Requirement** |
 
 ### How to Refresh Coverage Statistics
 
