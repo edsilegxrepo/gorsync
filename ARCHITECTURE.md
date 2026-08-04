@@ -51,7 +51,7 @@ graph TD
 1. **Pure Go Rsync Protocol Suite**: Implements rsync protocols 27, 30/31, and 32 natively in Go without C dependencies or shell executions.
 2. **FileSystem Abstraction (`rsync.WritableFS`)**: Abstracts file system mutations so targets can write directly to disk via `os.Root` or into pure in-memory, S3, or database backends.
 3. **OS-Enforced Jail Isolation**: Utilizes Go 1.24+ `os.OpenRoot` handles on Windows/unprivileged Linux and `pivot_root` mount namespaces under root Linux.
-4. **Structured Multiplex Framing**: Demultiplexes out-of-band messages (`MsgErrorXfer`, `MsgInfo`, `MsgWarning`) from inline file binary data cleanly over a single TCP/SSH/TLS stream.
+4. **Structured Multiplex Framing**: Demultiplexes out-of-band messages (`MsgErrorXfer`, `MsgInfo`, `MsgWarning`) from inline file binary data cleanly over a single TCP/SSH/TLS stream using zero-allocation stack-allocated `[4]byte` header operations (`PutUint32` / `Uint32`).
 5. **Standard Exit Code Taxonomy**: Returns standard `rsync(1)` exit codes (`0` ok, `1` syntax, `2` protocol, `3` file select, `5` client start, `10` socket IO, `11` file IO, `20` signal) wrapped via `ExitError`.
 
 ### Key Assumptions

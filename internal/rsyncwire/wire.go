@@ -36,9 +36,9 @@ func (w *MultiplexWriter) Write(p []byte) (n int, err error) {
 
 func (w *MultiplexWriter) WriteMsg(tag uint8, p []byte) (n int, err error) {
 	header := uint32(mplexBase+tag)<<24 | uint32(len(p)) // #nosec G115 -- multiplex header length conversion to uint32 wire format
-	// log.Printf("len %d (hex %x)", len(p), uint32(len(p)))
-	// log.Printf("header=%v (%x)", header, header)
-	if err := binary.Write(w.Writer, binary.LittleEndian, header); err != nil {
+	var headerBuf [4]byte
+	binary.LittleEndian.PutUint32(headerBuf[:], header)
+	if _, err := w.Writer.Write(headerBuf[:]); err != nil {
 		return 0, err
 	}
 	return w.Writer.Write(p)
@@ -58,10 +58,11 @@ const (
 )
 
 func (w *MultiplexReader) ReadMsg() (tag uint8, p []byte, err error) {
-	var header uint32
-	if err := binary.Read(w.Reader, binary.LittleEndian, &header); err != nil {
+	var headerBuf [4]byte
+	if _, err := io.ReadFull(w.Reader, headerBuf[:]); err != nil {
 		return 0, nil, err
 	}
+	header := binary.LittleEndian.Uint32(headerBuf[:])
 
 	tag = uint8(header>>24) - mplexBase
 	length := header & 0x00FFFFFF

@@ -16,6 +16,14 @@
 //	if _, err := cmd.Run(context.Background()); err != nil {
 //	  return fmt.Errorf("%v: %v", cmd.Args, err)
 //	}
+//
+// OBJECTIVE:
+// Expose a public, os/exec.Command-like API for programmatically embedding rsync transfers inside Go applications.
+//
+// CORE COMPONENTS & DATA FLOW:
+// 1. Cmd Struct: Holds execution options, stream handles (Stdin/Stdout/Stderr), and optional custom dialers.
+// 2. rsyncos.Env Adapter: Translates Cmd stream bindings and isolation settings into internal OS environment handles.
+// 3. Engine Dispatcher: Invokes maincmd.Main to execute transfer pipeline and return transfer statistics.
 package rsynccmd
 
 import (
@@ -56,6 +64,7 @@ type Result struct {
 
 // Run starts the specified rsync invocation.
 func (c *Cmd) Run(ctx context.Context) (*Result, error) {
+	// 1. Construct OS Environment Adapter: Bind streams and custom net.Dialer overrides.
 	osenv := &rsyncos.Env{
 		Stdin:        c.Stdin,
 		Stdout:       c.Stdout,
@@ -63,6 +72,8 @@ func (c *Cmd) Run(ctx context.Context) (*Result, error) {
 		DontRestrict: c.DontRestrict,
 		DialContext:  c.DialContext,
 	}
+
+	// 2. Execute Transfer Pipeline: Dispatch options parsing, handshake, and payload transfer.
 	stats, err := maincmd.Main(ctx, osenv, c.Args, nil)
 	if err != nil {
 		return nil, err

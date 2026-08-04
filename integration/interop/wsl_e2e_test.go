@@ -1,5 +1,13 @@
 //go:build windows
 
+// Package interop_test implements WSL interop integration tests.
+//
+// TEST STRATEGY EXPLANATION:
+//   1. Hyper-V Host Network Discovery: Dynamically discovers the Hyper-V host IP address (vEthernet WSL)
+//      to allow WSL Linux guest processes to connect directly to Windows host rsync daemons and SSH daemons.
+//   2. Subprocess Execution & Path Translation: Converts Windows host paths (C:/...) into WSL POSIX paths (/mnt/c/...)
+//      and executes nested wsl.exe commands to verify bidirectional Linux-guest <-> Windows-host transfers.
+//   3. Environmental Skips: Dynamically skips WSL tests if wsl.exe or Linux rsync binary is unavailable.
 package interop_test
 
 import (

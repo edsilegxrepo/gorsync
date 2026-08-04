@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/edsilegxrepo/gorsync/internal/rsyncopts"
@@ -49,9 +50,13 @@ func getPasswordSecret(opts *rsyncopts.Options, urlPass string) (*rsyncsec.Prote
 	if urlPass != "" {
 		rawPass = urlPass
 	} else if f := opts.PasswordFile(); f != "" {
-		data, err := os.ReadFile(filepath.Clean(f))
+		cleanPath := filepath.Clean(f)
+		if err := checkPasswordFilePermissions(cleanPath); err != nil {
+			return nil, &ExitError{Code: ExitCodeSyntax, Err: err}
+		}
+		data, err := os.ReadFile(cleanPath)
 		if err != nil {
-			return nil, fmt.Errorf("reading password file: %v", err)
+			return nil, &ExitError{Code: ExitCodeFileIO, Err: fmt.Errorf("reading password file: %v", err)}
 		}
 		defer func() {
 			libsecsecrets.ZeroBuffer(data)
@@ -99,3 +104,20 @@ func generateAuthHash(password, challenge string) string {
 	}
 	return hash
 }
+
+func checkPasswordFilePermissions(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("password file stat: %v", err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("password file %q is a directory", path)
+	}
+	if runtime.GOOS != "windows" {
+		if info.Mode().Perm()&0o077 != 0 {
+			return fmt.Errorf("password file %q must not be group or world readable (mode %04o)", path, info.Mode().Perm())
+		}
+	}
+	return nil
+}
+

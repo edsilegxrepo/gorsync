@@ -131,35 +131,8 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 			return nil, err
 		}
 
-		// TODO: remove duplication with handleDaemonConn
-		if len(remaining) < 2 {
-			return nil, fmt.Errorf("invalid args: at least one directory required")
-		}
-		if got, want := remaining[0], "."; got != want {
-			return nil, fmt.Errorf("protocol error: got %q, expected %q", got, want)
-		}
-		paths := remaining[1:]
-		for i, p := range paths {
-			paths[i] = normalizePath(p)
-		}
-		if opts.Verbose() {
-			osenv.Logf("paths: %q", paths)
-		}
-		var roDirs, rwDirs []string
-		if opts.Sender() {
-			roDirs = append(roDirs, paths...)
-		} else {
-			for _, path := range paths {
-				if err := os.MkdirAll(path, 0o755); err != nil { // #nosec G301 -- target path directory creation permission (0755)
-					return nil, err
-				}
-			}
-			rwDirs = append(rwDirs, paths...)
-		}
-		if osenv.Restrict() {
-			if err := restrict.MaybeFileSystem(roDirs, rwDirs); err != nil {
-				return nil, err
-			}
+		if _, err := extractAndPrepareServerPaths(osenv, opts, remaining); err != nil {
+			return nil, err
 		}
 		conn := rsyncd.NewConnection(osenv.Stdin, osenv.Stdout, "<remote-shell>")
 		return nil, srv.InternalHandleConn(ctx, conn, nil, pc)
@@ -409,5 +382,38 @@ func normalizePath(p string) string {
 		}
 	}
 	return p
+}
+
+func extractAndPrepareServerPaths(osenv *rsyncos.Env, opts *rsyncopts.Options, remaining []string) ([]string, error) {
+	if len(remaining) < 2 {
+		return nil, &ExitError{Code: ExitCodeSyntax, Err: fmt.Errorf("invalid args: at least one directory required")}
+	}
+	if got, want := remaining[0], "."; got != want {
+		return nil, &ExitError{Code: ExitCodeProtocol, Err: fmt.Errorf("protocol error: got %q, expected %q", got, want)}
+	}
+	paths := remaining[1:]
+	for i, p := range paths {
+		paths[i] = normalizePath(p)
+	}
+	if opts.Verbose() {
+		osenv.Logf("paths: %q", paths)
+	}
+	var roDirs, rwDirs []string
+	if opts.Sender() {
+		roDirs = append(roDirs, paths...)
+	} else {
+		for _, path := range paths {
+			if err := os.MkdirAll(path, 0o755); err != nil { // #nosec G301 -- target path directory creation permission (0755)
+				return nil, &ExitError{Code: ExitCodeFileIO, Err: err}
+			}
+		}
+		rwDirs = append(rwDirs, paths...)
+	}
+	if osenv.Restrict() {
+		if err := restrict.MaybeFileSystem(roDirs, rwDirs); err != nil {
+			return nil, &ExitError{Code: ExitCodeFileIO, Err: err}
+		}
+	}
+	return paths, nil
 }
 

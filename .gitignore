@@ -49,6 +49,7 @@ keys/
 *.tmp
 *.test
 *.log
+coverage*
 temp/
 tmp/
 out/
