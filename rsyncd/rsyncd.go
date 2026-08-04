@@ -261,7 +261,7 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 	rd := conn.rd
 	// send server greeting
 
-	fmt.Fprintf(cwr, "@RSYNCD: %d.0\n", rsync.MaxProtocolVersion)
+	fmt.Fprintf(cwr, "@RSYNCD: 31.0\n")
 
 	// read client greeting
 	clientGreeting, err := rd.ReadString('\n')

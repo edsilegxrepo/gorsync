@@ -32,5 +32,5 @@ const (
 // ProtocolVersion defines the default baseline rsync protocol version.
 const ProtocolVersion = 27
 
-// MaxProtocolVersion defines the highest supported rsync protocol version (Protocol 31).
-const MaxProtocolVersion = 31
+// MaxProtocolVersion defines the highest supported rsync protocol version (Protocol 32).
+const MaxProtocolVersion = 32

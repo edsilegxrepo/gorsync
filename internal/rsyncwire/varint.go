@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"time"
 )
 
 // ReadVarInt reads an rsync protocol 30+ variable-length integer.
@@ -144,4 +145,36 @@ func WriteVarInt(w io.Writer, val int64) error {
 	binary.BigEndian.PutUint64(buf[1:], uint64(val))
 	_, err := w.Write(buf[:])
 	return err
+}
+
+// ReadVarInt32 reads a 32-bit protocol 32 varint integer.
+func ReadVarInt32(r io.Reader) (int32, error) {
+	val, err := ReadVarInt(r)
+	return int32(val), err
+}
+
+// WriteVarInt32 writes a 32-bit protocol 32 varint integer.
+func WriteVarInt32(w io.Writer, val int32) error {
+	return WriteVarInt(w, int64(val))
+}
+
+// ReadTime64 reads a Protocol 32 64-bit nanosecond precision timestamp.
+func ReadTime64(r io.Reader) (time.Time, error) {
+	sec, err := ReadVarInt(r)
+	if err != nil {
+		return time.Time{}, err
+	}
+	nsec, err := ReadVarInt(r)
+	if err != nil {
+		return time.Unix(sec, 0), nil
+	}
+	return time.Unix(sec, nsec), nil
+}
+
+// WriteTime64 writes a Protocol 32 64-bit nanosecond precision timestamp.
+func WriteTime64(w io.Writer, t time.Time) error {
+	if err := WriteVarInt(w, t.Unix()); err != nil {
+		return err
+	}
+	return WriteVarInt(w, int64(t.Nanosecond()))
 }

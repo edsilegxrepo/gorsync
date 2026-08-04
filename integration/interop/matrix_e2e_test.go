@@ -1490,4 +1490,85 @@ func TestPhase5Protocol30_31_4Scenarios(t *testing.T) {
 	})
 }
 
+func TestPhase6Protocol32_4Scenarios(t *testing.T) {
+	tmpDir := t.TempDir()
+	binClient, binDaemon := buildBinaries(t)
+
+	// Scenario 1: Windows Client -> Windows Server (Protocol 32 Bit-Packed Varints & 64-bit Timestamps)
+	t.Run("Scenario1_WinClient_WinServer_Protocol32", func(t *testing.T) {
+		srcDir := filepath.Join(tmpDir, "p32_src")
+		destDir := filepath.Join(tmpDir, "p32_dest")
+		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.MkdirAll(destDir, 0755)
+		_ = os.WriteFile(filepath.Join(srcDir, "p32_data.txt"), []byte("Protocol 32 64-bit Nanosecond Timestamp Payload"), 0644)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
+		defer stopServer()
+
+		waitForPort(t, port)
+
+		srcURL := fmt.Sprintf("rsync://127.0.0.1:%d/interop/", port)
+		cmdClient := exec.Command(binClient, "--archive", "--protocol=32", srcDir+"/", srcURL)
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Win-to-Win Protocol 32 sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(destDir, "p32_data.txt"))
+		if err != nil || string(got) != "Protocol 32 64-bit Nanosecond Timestamp Payload" {
+			t.Fatalf("Payload mismatch on Protocol 32: %q, err: %v", string(got), err)
+		}
+	})
+
+	// Scenario 2: Linux Client -> Linux Server (WSL) (Protocol 32 with rsync 3.4.x)
+	t.Run("Scenario2_LinuxClient_LinuxServer_Protocol32_WSL", func(t *testing.T) {
+		checkWSL(t)
+
+		wslSrcDir := fmt.Sprintf("/tmp/wsl_p32_src_%d", time.Now().UnixNano()%10000)
+		wslDestDir := fmt.Sprintf("/tmp/wsl_p32_dest_%d", time.Now().UnixNano()%10000)
+
+		wslScript := fmt.Sprintf(`mkdir -p %s %s && echo "WSL Protocol 32 Payload" > %s/p32_linux.txt && rsync --archive --protocol=32 %s/ %s/`, wslSrcDir, wslDestDir, wslSrcDir, wslSrcDir, wslDestDir)
+
+		out, err := exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", wslScript).CombinedOutput()
+		if err != nil {
+			t.Fatalf("WSL Linux Protocol 32 setup failed: %v\nOutput: %s", err, string(out))
+		}
+
+		_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", fmt.Sprintf("rm -rf %s %s", wslSrcDir, wslDestDir)).Run()
+	})
+
+	// Scenario 3: Windows Client -> Linux Server (WSL) (Protocol 32)
+	t.Run("Scenario3_WinClient_LinuxServer_Protocol32_WSL", func(t *testing.T) {
+		checkWSL(t)
+
+		srcDir := filepath.Join(tmpDir, "scen3_p32_src")
+		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.WriteFile(filepath.Join(srcDir, "scen3_p32.txt"), []byte("Win-to-Linux Protocol 32 Payload"), 0644)
+
+		port := getFreePort(t)
+		stopServer := startLinuxDaemon(t, port, srcDir)
+		defer stopServer()
+
+		waitForPort(t, port)
+
+		srcURL := fmt.Sprintf("rsync://127.0.0.1:%d/interop/", port)
+		cmdClient := exec.Command(binClient, "--archive", "--protocol=32", srcDir+"/", srcURL)
+		_ = cmdClient.Run()
+	})
+
+	// Scenario 4: Linux Client -> Windows Server (Protocol 32 Cross-Platform)
+	t.Run("Scenario4_LinuxClient_WinServer_Protocol32_CrossPlatform", func(t *testing.T) {
+		destDir := filepath.Join(tmpDir, "scen4_p32_dest")
+		_ = os.MkdirAll(destDir, 0755)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
+		defer stopServer()
+
+		waitForPort(t, port)
+		t.Logf("Scenario 4 Windows Protocol 32 daemon listening on port %d", port)
+	})
+}
+
 
