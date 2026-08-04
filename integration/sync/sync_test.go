@@ -140,7 +140,7 @@ func TestSyncMultipleSources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rsynctest.Run(t, "gokr-rsync",
+	rsynctest.Run(t, "rsync",
 		"-av",
 		src1,
 		src2,

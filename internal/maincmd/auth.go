@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets"
 	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
 	"github.com/edsilegxrepo/rsync/internal/rsyncsec"
+	"github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets"
 	"github.com/mmcloughlin/md4"
 )
 
@@ -99,4 +99,3 @@ func generateAuthHash(password, challenge string) string {
 	}
 	return hash
 }
-

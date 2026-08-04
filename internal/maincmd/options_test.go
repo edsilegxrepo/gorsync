@@ -230,4 +230,3 @@ func TestCheckForHostspec(t *testing.T) {
 		})
 	}
 }
-

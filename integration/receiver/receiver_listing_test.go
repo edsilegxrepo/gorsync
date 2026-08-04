@@ -54,7 +54,7 @@ func TestReceiverListing(t *testing.T) {
 	// start a server to sync from
 	srv := rsynctest.New(t, rsynctest.InteropModule(source))
 
-	stdout, _ := rsynctest.Output(t, "gokr-rsync",
+	stdout, _ := rsynctest.Output(t, "rsync",
 		"-aH",
 		"rsync://localhost:"+srv.Port+"/interop/")
 	want := `drwxr-xr-x        4096 2009/11/10 23:00:00 .

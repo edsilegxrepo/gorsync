@@ -88,7 +88,7 @@ func TestModuleListingClient(t *testing.T) {
 
 	// request module list
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-aH",
 		"rsync://localhost:" + srv.Port + "/",
 	}
@@ -109,7 +109,7 @@ func TestModuleListingClientPort(t *testing.T) {
 
 	// request module list
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-aH",
 		"--port=" + srv.Port,
 		"rsync://localhost/",
@@ -454,7 +454,7 @@ func TestInteropSubdirExcludeGokrazy(t *testing.T) {
 
 	// sync into dest dir
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-f", "- expensive",
 		"-avH",
 		"rsync://localhost:" + srv.Port + "/interop/",

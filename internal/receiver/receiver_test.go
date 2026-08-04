@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gokrazy/rsync"
-	golog "github.com/gokrazy/rsync/internal/log"
-	"github.com/gokrazy/rsync/internal/receiver"
-	"github.com/gokrazy/rsync/internal/rsyncopts"
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync"
+	golog "github.com/edsilegxrepo/rsync/internal/log"
+	"github.com/edsilegxrepo/rsync/internal/receiver"
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
 )
 
 // memFS implements rsync.WritableFS for in-memory mock testing
@@ -122,7 +122,7 @@ type memFileInfo struct {
 
 func (m *memFileInfo) Name() string       { return m.name }
 func (m *memFileInfo) Size() int64        { return m.size }
-func (m *memFileInfo) Mode() fs.FileMode  { return 0644 }
+func (m *memFileInfo) Mode() fs.FileMode  { return 0o644 }
 func (m *memFileInfo) ModTime() time.Time { return time.Now() }
 func (m *memFileInfo) IsDir() bool        { return false }
 func (m *memFileInfo) Sys() any           { return nil }

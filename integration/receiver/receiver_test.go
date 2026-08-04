@@ -505,7 +505,7 @@ func TestReceiverSSH(t *testing.T) {
 	t.Setenv("SSH_ASKPASS", "")
 	t.Setenv("SSH_AUTH_SOCK", "")
 	// sync into dest dir
-	rsynctest.Run(t, "gokr-rsync",
+	rsynctest.Run(t, "rsync",
 		"-aH",
 		"--dry-run",
 		"-e", "ssh -vv -o IdentityFile="+privKeyPath+" -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null -p "+srv.Port,
@@ -528,7 +528,7 @@ func TestReceiverCommand(t *testing.T) {
 	}
 
 	// sync into dest dir
-	rsynctest.Run(t, "gokr-rsync",
+	rsynctest.Run(t, "rsync",
 		"-aH",
 		"--dry-run",
 		"-e", `"`+os.Args[0]+`"`,
@@ -567,7 +567,7 @@ func TestReceiverSymlinkTraversal(t *testing.T) {
 	// start a server to sync from
 	srv := rsynctest.New(t, rsynctest.InteropModule(source))
 
-	rsynctest.Run(t, "gokr-rsync",
+	rsynctest.Run(t, "rsync",
 		"-aH",
 		"rsync://localhost:"+srv.Port+"/interop/",
 		dest)

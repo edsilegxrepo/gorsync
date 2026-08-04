@@ -90,7 +90,7 @@ func namespace(osenv *rsyncos.Env, modules []rsyncd.Module, listen string) error
 		// nosuid, noexec and/or atime, to prevent operation not permitted
 		// errors when remounting read-only():
 		// https://unix.stackexchange.com/questions/655409/in-a-user-namespace-as-non-root-on-a-nosuid-nodev-filesystem-why-does-a-bind-m
-		tmpdir, err := os.MkdirTemp("", "gokr-rsync")
+		tmpdir, err := os.MkdirTemp("", "gorsync")
 		if err != nil {
 			return err
 		}

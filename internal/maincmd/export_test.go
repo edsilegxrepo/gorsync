@@ -1,4 +1,6 @@
 package maincmd
 
-var ExportExtractUserPass = extractUserPass
-var ExportCanUnexpectedlyWriteTo = canUnexpectedlyWriteTo
+var (
+	ExportExtractUserPass        = extractUserPass
+	ExportCanUnexpectedlyWriteTo = canUnexpectedlyWriteTo
+)

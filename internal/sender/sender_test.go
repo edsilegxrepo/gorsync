@@ -7,10 +7,10 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/gokrazy/rsync/internal/rsyncopts"
-	"github.com/gokrazy/rsync/internal/rsyncos"
-	"github.com/gokrazy/rsync/internal/rsyncwire"
-	"github.com/gokrazy/rsync/internal/sender"
+	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
+	"github.com/edsilegxrepo/rsync/internal/rsyncos"
+	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
+	"github.com/edsilegxrepo/rsync/internal/sender"
 )
 
 func TestSenderDoWithMapFS(t *testing.T) {

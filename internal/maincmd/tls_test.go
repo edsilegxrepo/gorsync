@@ -51,7 +51,7 @@ func generateTestTLSCert(t *testing.T, dir string) (certPath, keyPath string) {
 	certOut.Close()
 
 	keyPath = filepath.Join(dir, "server.key")
-	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		t.Fatalf("os.OpenFile keyPath failed: %v", err)
 	}

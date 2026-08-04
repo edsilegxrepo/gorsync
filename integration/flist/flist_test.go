@@ -12,6 +12,9 @@ import (
 
 // rsynctest.go:282: length 280063 exceeds max message size (262144)
 func TestLargeFileList(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping heavy 5000-file flist test in short mode")
+	}
 	t.Parallel()
 
 	tmp := t.TempDir()

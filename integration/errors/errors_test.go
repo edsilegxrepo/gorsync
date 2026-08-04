@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -13,6 +14,9 @@ import (
 )
 
 func TestErrors(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping external C rsync error process test on Windows")
+	}
 	t.Parallel()
 
 	tmp := t.TempDir()
@@ -85,6 +89,9 @@ func TestNoSuchModule(t *testing.T) {
 }
 
 func TestNoReadPermission(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping POSIX permission test on Windows")
+	}
 	t.Parallel()
 
 	tmp := t.TempDir()

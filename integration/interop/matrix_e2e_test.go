@@ -1577,9 +1577,9 @@ func TestPhase7TODOFeatures_4Scenarios(t *testing.T) {
 		t.Parallel()
 		srcDir := filepath.Join(tmpDir, "p7_s1_src")
 		dstDir := filepath.Join(tmpDir, "p7_s1_dst")
-		os.MkdirAll(srcDir, 0755)
-		os.MkdirAll(dstDir, 0755)
-		os.WriteFile(filepath.Join(srcDir, "phase7.txt"), []byte("Phase 7 TODO Features Verified"), 0644)
+		os.MkdirAll(srcDir, 0o755)
+		os.MkdirAll(dstDir, 0o755)
+		os.WriteFile(filepath.Join(srcDir, "phase7.txt"), []byte("Phase 7 TODO Features Verified"), 0o644)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemon(t, port, dstDir, binDaemon, "127.0.0.1")
@@ -1605,9 +1605,9 @@ func TestPhase7TODOFeatures_4Scenarios(t *testing.T) {
 		t.Parallel()
 		srcDir := filepath.Join(tmpDir, "p7_s2_src")
 		dstDir := filepath.Join(tmpDir, "p7_s2_dst")
-		os.MkdirAll(srcDir, 0755)
-		os.MkdirAll(dstDir, 0755)
-		os.WriteFile(filepath.Join(srcDir, "linux7.txt"), []byte("Linux Phase 7 WSL Verified"), 0644)
+		os.MkdirAll(srcDir, 0o755)
+		os.MkdirAll(dstDir, 0o755)
+		os.WriteFile(filepath.Join(srcDir, "linux7.txt"), []byte("Linux Phase 7 WSL Verified"), 0o644)
 
 		wslSrc := toWSLPath(srcDir)
 		wslDst := toWSLPath(dstDir)
@@ -1628,9 +1628,9 @@ func TestPhase7TODOFeatures_4Scenarios(t *testing.T) {
 		t.Parallel()
 		srcDir := filepath.Join(tmpDir, "p7_s3_src")
 		dstDir := filepath.Join(tmpDir, "p7_s3_dst")
-		os.MkdirAll(srcDir, 0755)
-		os.MkdirAll(dstDir, 0755)
-		os.WriteFile(filepath.Join(srcDir, "cross7.txt"), []byte("Win Client to Linux Server Phase 7"), 0644)
+		os.MkdirAll(srcDir, 0o755)
+		os.MkdirAll(dstDir, 0o755)
+		os.WriteFile(filepath.Join(srcDir, "cross7.txt"), []byte("Win Client to Linux Server Phase 7"), 0o644)
 
 		port := getFreePort(t)
 		stopServer := startLinuxDaemon(t, port, dstDir)
@@ -1656,7 +1656,7 @@ func TestPhase7TODOFeatures_4Scenarios(t *testing.T) {
 		t.Parallel()
 		tmpDir := t.TempDir()
 		dstDir := filepath.Join(tmpDir, "dst")
-		os.MkdirAll(dstDir, 0755)
+		os.MkdirAll(dstDir, 0o755)
 
 		srv := rsynctest.New(t, []rsyncd.Module{
 			{Name: "winphase7", Comment: "Win Server Phase 7 Module", Path: dstDir, Writable: true},
@@ -1667,4 +1667,3 @@ func TestPhase7TODOFeatures_4Scenarios(t *testing.T) {
 		t.Logf("Scenario 4 Windows Phase 7 daemon listening on port %d", port)
 	})
 }
-

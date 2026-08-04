@@ -289,7 +289,7 @@ func TestDaemonReceiverSyncHardLinks(t *testing.T) {
 	rsync.Stdout = &buf
 	rsync.Stderr = &buf
 	if err := rsync.Run(); err != nil {
-		if strings.Contains(buf.String(), "gokr-rsync [receiver]: support for hard links not yet implemented") {
+		if strings.Contains(buf.String(), "support for hard links not yet implemented") {
 			return
 		}
 		t.Fatalf("%v: %v", rsync.Args, err)

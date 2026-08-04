@@ -96,7 +96,7 @@ func TestMTLSAuthenticationAndRBAC(t *testing.T) {
 		t.Fatalf("failed generating Root CA: %v", err)
 	}
 	caPath := filepath.Join(tmpDir, "ca.crt")
-	_ = os.WriteFile(caPath, caCertPEM, 0600)
+	_ = os.WriteFile(caPath, caCertPEM, 0o600)
 	_ = caKeyPEM
 
 	// Generate Server Cert signed by Root CA
@@ -106,8 +106,8 @@ func TestMTLSAuthenticationAndRBAC(t *testing.T) {
 	}
 	srvCertPath := filepath.Join(tmpDir, "server.crt")
 	srvKeyPath := filepath.Join(tmpDir, "server.key")
-	_ = os.WriteFile(srvCertPath, srvCertPEM, 0600)
-	_ = os.WriteFile(srvKeyPath, srvKeyPEM, 0600)
+	_ = os.WriteFile(srvCertPath, srvCertPEM, 0o600)
+	_ = os.WriteFile(srvKeyPath, srvKeyPEM, 0o600)
 
 	// Generate Client Cert with CN = "admin-client" signed by Root CA
 	adminCertPEM, adminKeyPEM, _, _, err := generateCertKeyWithCN("admin-client", false, caCert, caKey)
@@ -122,7 +122,7 @@ func TestMTLSAuthenticationAndRBAC(t *testing.T) {
 	}
 
 	modPath := filepath.Join(tmpDir, "mod")
-	_ = os.MkdirAll(modPath, 0755)
+	_ = os.MkdirAll(modPath, 0o755)
 
 	srv, err := rsyncd.NewServer([]rsyncd.Module{
 		{
@@ -132,7 +132,6 @@ func TestMTLSAuthenticationAndRBAC(t *testing.T) {
 			TLSAllowedCNs: []string{"admin-client"},
 		},
 	}, rsyncd.WithTLSCertKeyPair(srvCertPath, srvKeyPath), rsyncd.WithTLSClientCA(caPath, true))
-
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
@@ -161,9 +160,9 @@ func TestMTLSAuthenticationAndRBAC(t *testing.T) {
 		}
 
 		conn, err := tls.Dial("tcp", ln.Addr().String(), &tls.Config{
-			RootCAs:      caPool,
-			Certificates: []tls.Certificate{clientCert},
-			ServerName:   "127.0.0.1",
+			RootCAs:            caPool,
+			Certificates:       []tls.Certificate{clientCert},
+			ServerName:         "127.0.0.1",
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
@@ -199,9 +198,9 @@ func TestMTLSAuthenticationAndRBAC(t *testing.T) {
 		}
 
 		conn, err := tls.Dial("tcp", ln.Addr().String(), &tls.Config{
-			RootCAs:      caPool,
-			Certificates: []tls.Certificate{clientCert},
-			ServerName:   "127.0.0.1",
+			RootCAs:            caPool,
+			Certificates:       []tls.Certificate{clientCert},
+			ServerName:         "127.0.0.1",
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
@@ -229,7 +228,7 @@ func TestMTLSMultiFactorPasswordAndCert(t *testing.T) {
 		t.Fatalf("failed generating CA: %v", err)
 	}
 	caPath := filepath.Join(tmpDir, "ca.crt")
-	_ = os.WriteFile(caPath, caCertPEM, 0600)
+	_ = os.WriteFile(caPath, caCertPEM, 0o600)
 	_ = caKeyPEM
 
 	srvCertPEM, srvKeyPEM, _, _, err := generateCertKeyWithCN("localhost", false, caCert, caKey)
@@ -238,8 +237,8 @@ func TestMTLSMultiFactorPasswordAndCert(t *testing.T) {
 	}
 	srvCertPath := filepath.Join(tmpDir, "server.crt")
 	srvKeyPath := filepath.Join(tmpDir, "server.key")
-	_ = os.WriteFile(srvCertPath, srvCertPEM, 0600)
-	_ = os.WriteFile(srvKeyPath, srvKeyPEM, 0600)
+	_ = os.WriteFile(srvCertPath, srvCertPEM, 0o600)
+	_ = os.WriteFile(srvKeyPath, srvKeyPEM, 0o600)
 
 	adminCertPEM, adminKeyPEM, _, _, err := generateCertKeyWithCN("admin-user", false, caCert, caKey)
 	if err != nil {
@@ -247,10 +246,10 @@ func TestMTLSMultiFactorPasswordAndCert(t *testing.T) {
 	}
 
 	secretsPath := filepath.Join(tmpDir, "rsyncd.secrets")
-	_ = os.WriteFile(secretsPath, []byte("admin:secret123\n"), 0600)
+	_ = os.WriteFile(secretsPath, []byte("admin:secret123\n"), 0o600)
 
 	modPath := filepath.Join(tmpDir, "mfamod")
-	_ = os.MkdirAll(modPath, 0755)
+	_ = os.MkdirAll(modPath, 0o755)
 
 	// Mode 3: Pass + mTLS Dual-Factor Authentication Module
 	srv, err := rsyncd.NewServer([]rsyncd.Module{

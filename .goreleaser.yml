@@ -5,8 +5,8 @@ before:
 
 builds:
 - id: "rsync-linux"
-  main: "./cmd/gokr-rsync"
-  binary: "gokr-rsync"
+  main: "./cmd/rsync"
+  binary: "gorsync"
   env:
   - CGO_ENABLED=0
   goos:
@@ -18,8 +18,8 @@ builds:
   - 386
 
 - id: "rsync-windows"
-  main: "./cmd/gokr-rsync"
-  binary: "gokr-rsync"
+  main: "./cmd/rsync"
+  binary: "gorsync"
   env:
   - CGO_ENABLED=0
   goos:
@@ -30,8 +30,8 @@ builds:
   - 386
 
 - id: "rsync-macos"
-  main: "./cmd/gokr-rsync"
-  binary: "gokr-rsync"
+  main: "./cmd/rsync"
+  binary: "gorsync"
   env:
   - CGO_ENABLED=0
   goos:

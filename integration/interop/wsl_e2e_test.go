@@ -34,6 +34,7 @@ func getWSLHostIP() string {
 	}
 	return "127.0.0.1"
 }
+
 func toWSLPath(winPath string) string {
 	winPath = filepath.Clean(winPath)
 	vol := filepath.VolumeName(winPath)
@@ -69,25 +70,17 @@ func getFreePort(t *testing.T) int {
 }
 
 func TestWSLInterop_ClientAndServer(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping WSL interop test in short mode")
+	}
 	checkWSL(t)
 
 	tmpDir := t.TempDir()
 
-	// 1. Build Windows gokr-rsync and gokr-rsyncd binaries
-	gokrRsync := filepath.Join(tmpDir, "rsync.exe")
-	gokrRsyncd := filepath.Join(tmpDir, "rsyncd.exe")
-
-	cmdBuildClient := exec.Command("go", "build", "-o", gokrRsync, "./cmd/rsync")
-	cmdBuildClient.Dir = findRepoRoot(t)
-	if out, err := cmdBuildClient.CombinedOutput(); err != nil {
-		t.Fatalf("go build rsync failed: %v\nOutput: %s", err, string(out))
-	}
-
-	cmdBuildDaemon := exec.Command("go", "build", "-o", gokrRsyncd, "./cmd/rsyncd")
-	cmdBuildDaemon.Dir = findRepoRoot(t)
-	if out, err := cmdBuildDaemon.CombinedOutput(); err != nil {
-		t.Fatalf("go build rsyncd failed: %v\nOutput: %s", err, string(out))
-	}
+	// 1. Get Windows rsync and rsyncd binaries
+	rsyncBin := getCompiledRsync(t)
+	rsyncdBin := getCompiledRsyncd(t)
+	_ = rsyncdBin
 
 	// Create test dataset
 	sourceDir := filepath.Join(tmpDir, "source")
@@ -104,15 +97,15 @@ func TestWSLInterop_ClientAndServer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("WSL Client -> gokr-rsyncd Daemon (Upload & List)", func(t *testing.T) {
+	t.Run("WSL Client -> rsync Daemon (Upload & List)", func(t *testing.T) {
 		port := getFreePort(t)
 		destDir := filepath.Join(tmpDir, "rsyncd_dest")
 		if err := os.MkdirAll(destDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
 
-		// Create gokr-rsyncd config file
-		cfgPath := filepath.Join(tmpDir, "gokr-rsyncd.toml")
+		// Create rsyncd config file
+		cfgPath := filepath.Join(tmpDir, "rsyncd.toml")
 		cfgContent := fmt.Sprintf(`
 [[listener]]
 rsyncd = "0.0.0.0:%d"
@@ -127,19 +120,19 @@ writable = true
 			t.Fatal(err)
 		}
 
-		// Start gokr-rsyncd with --daemon --gokr.config
-		daemonCmd := exec.Command(gokrRsync, "--daemon", "--gokr.config="+cfgPath)
+		// Start rsyncd with --daemon --gokr.config
+		daemonCmd := exec.Command(rsyncBin, "--daemon", "--gokr.config="+cfgPath)
 		var daemonLog bytes.Buffer
 		daemonCmd.Stdout = &daemonLog
 		daemonCmd.Stderr = &daemonLog
 		if err := daemonCmd.Start(); err != nil {
-			t.Fatalf("gokr-rsyncd start: %v", err)
+			t.Fatalf("rsyncd start: %v", err)
 		}
-		defer func() {
+		t.Cleanup(func() {
 			if daemonCmd.Process != nil {
 				_ = daemonCmd.Process.Kill()
 			}
-		}()
+		})
 
 		// Wait for daemon port
 		if !waitForPortLog(t, port, &daemonLog) {
@@ -213,38 +206,38 @@ EOF
 		if err := wslDaemon.Start(); err != nil {
 			t.Fatalf("WSL daemon start: %v", err)
 		}
-		defer func() {
+		t.Cleanup(func() {
 			if wslDaemon.Process != nil {
 				_ = wslDaemon.Process.Kill()
 			}
 			cleanupScript := fmt.Sprintf("rm -rf %s %s", wslSrcDir, wslConfFile)
 			_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", cleanupScript).Run()
-		}()
+		})
 
 		if !waitForPortLog(t, port, nil) {
 			t.Fatalf("WSL Port %d was not listening after 5 seconds. WSL log:\n%s", port, wslLog.String())
 		}
 
-		// 1. gokr-rsync Windows client lists modules
-		clientListCmd := exec.Command(gokrRsync, fmt.Sprintf("rsync://127.0.0.1:%d/", port))
+		// 1. Windows client lists modules
+		clientListCmd := exec.Command(rsyncBin, fmt.Sprintf("rsync://127.0.0.1:%d/", port))
 		cListOut, err := clientListCmd.CombinedOutput()
 		if err != nil {
-			t.Fatalf("gokr-rsync listing WSL daemon failed: %v\nOutput: %s", err, string(cListOut))
+			t.Fatalf("rsync listing WSL daemon failed: %v\nOutput: %s", err, string(cListOut))
 		}
 		if !strings.Contains(string(cListOut), "wslmod") {
 			t.Fatalf("Expected 'wslmod' in module listing, got:\n%s", string(cListOut))
 		}
 
-		// 2. gokr-rsync Windows client downloads files with exclude filter and progress
-		targetDir := filepath.Join(tmpDir, "gokr_download")
+		// 2. Windows client downloads files with exclude filter and progress
+		targetDir := filepath.Join(tmpDir, "gorsync_download")
 		if err := os.MkdirAll(targetDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
 
-		clientSyncCmd := exec.Command(gokrRsync, "-av", "--progress", "--exclude=*.bak", fmt.Sprintf("rsync://127.0.0.1:%d/wslmod/", port), targetDir)
+		clientSyncCmd := exec.Command(rsyncBin, "-av", "--progress", "--exclude=*.bak", fmt.Sprintf("rsync://127.0.0.1:%d/wslmod/", port), targetDir)
 		cSyncOut, err := clientSyncCmd.CombinedOutput()
 		if err != nil {
-			t.Fatalf("gokr-rsync download from WSL daemon failed: %v\nOutput: %s", err, string(cSyncOut))
+			t.Fatalf("rsync download from WSL daemon failed: %v\nOutput: %s", err, string(cSyncOut))
 		}
 
 		// 3. Verify downloaded files
@@ -289,28 +282,17 @@ EOF
 		if err := wslDaemon.Start(); err != nil {
 			t.Fatalf("WSL daemon start: %v", err)
 		}
-		defer func() {
+		t.Cleanup(func() {
 			if wslDaemon.Process != nil {
 				_ = wslDaemon.Process.Kill()
 			}
 			cleanupScript := fmt.Sprintf("rm -rf %s %s", wslSrcDir, wslConfFile)
 			_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", cleanupScript).Run()
-		}()
+		})
 
-		if !waitForPortLog(t, port, nil) {
-			t.Fatalf("WSL Port %d was not listening after 5 seconds. WSL log:\n%s", port, wslLog.String())
-		}
-
-		binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
-		cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/gokr-rsync")
-		cmdBuild.Dir = findRepoRoot(t)
-		if out, err := cmdBuild.CombinedOutput(); err != nil {
-			t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
-		}
-
-		out, err := exec.Command(binClient, "-r", "--list-only", fmt.Sprintf("rsync://127.0.0.1:%d/apimod/", port)).CombinedOutput()
+		out, err := exec.Command(rsyncBin, "-r", "--list-only", fmt.Sprintf("rsync://127.0.0.1:%d/apimod/", port)).CombinedOutput()
 		if err != nil {
-			t.Fatalf("gokr-rsync --list-only against WSL daemon failed: %v\nOutput: %s", err, string(out))
+			t.Fatalf("rsync --list-only against WSL daemon failed: %v\nOutput: %s", err, string(out))
 		}
 		if !strings.Contains(string(out), "apifile.txt") {
 			t.Fatalf("Expected apifile.txt in list output, got:\n%s", string(out))

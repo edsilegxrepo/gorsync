@@ -100,7 +100,7 @@ func TestGetPasswordSecret(t *testing.T) {
 	}
 
 	osenv := &rsyncos.Env{}
-	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithGokrazyDefaults(osenv))
+	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithDefaults(osenv))
 	if err := pc.ParseArguments(osenv, []string{"--password-file=" + passPath}); err != nil {
 		t.Fatalf("ParseArguments failed: %v", err)
 	}
@@ -138,4 +138,3 @@ func TestResolveUsername(t *testing.T) {
 		t.Errorf("expected 'env_bob', got %q", u)
 	}
 }
-

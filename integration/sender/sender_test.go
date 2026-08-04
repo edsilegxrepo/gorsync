@@ -97,7 +97,7 @@ func TestSender(t *testing.T) {
 	srv := rsynctest.New(t, rsynctest.WritableInteropModule(dest))
 
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-aH",
 		source + "/",
 		"rsync://localhost:" + srv.Port + "/interop/",
@@ -231,7 +231,7 @@ func TestSenderNoSlash(t *testing.T) {
 	srv := rsynctest.New(t, rsynctest.WritableInteropModule(dest))
 
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-aH",
 		source,
 		"rsync://localhost:" + srv.Port + "/interop/",
@@ -293,8 +293,10 @@ func TestSenderNoSlash(t *testing.T) {
 	if err := os.Chtimes(source, mtime, mtime); err != nil {
 		t.Fatal(err)
 	}
-	// Replace the dest symlink to see if it will be restored
-	rsynctest.ReplaceSymlink(t, "wrong", filepath.Join(dest, "hey"))
+	if createdSymlink {
+		// Replace the dest symlink to see if it will be restored
+		rsynctest.ReplaceSymlink(t, "wrong", filepath.Join(dest, "hey"))
+	}
 
 	rsynctest.Run(t, args...)
 
@@ -308,7 +310,7 @@ func TestSenderNoSlash(t *testing.T) {
 			t.Fatalf("unexpected file contents: diff (-want +got):\n%s", diff)
 		}
 	}
-	{
+	if createdSymlink {
 		got, err := os.Readlink(filepath.Join(dest, "hey"))
 		if err != nil {
 			t.Fatal(err)
@@ -339,7 +341,7 @@ func TestSenderRelative(t *testing.T) {
 	srv := rsynctest.New(t, rsynctest.WritableInteropModule(dest))
 
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-aH",
 		"source",
 		"rsync://localhost:" + srv.Port + "/interop/",
@@ -383,7 +385,7 @@ func TestSenderTraversal(t *testing.T) {
 	srv := rsynctest.New(t, rsynctest.InteropModule(source))
 
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-aH",
 		"rsync://localhost:" + srv.Port + "/interop/../",
 		dest + "/",
@@ -441,7 +443,7 @@ func TestSenderBothLocal(t *testing.T) {
 	}
 
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-aH",
 		source,
 		dest,
@@ -550,7 +552,7 @@ func TestSenderBothLocalFile(t *testing.T) {
 	}
 
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-avH",
 		source,
 		dest,
@@ -589,7 +591,7 @@ func TestSenderBothLocalHang(t *testing.T) {
 	}
 
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-rv",
 		source,
 		dest,
@@ -637,7 +639,7 @@ func TestSenderPartial257K(t *testing.T) {
 	}
 
 	args := []string{
-		"gokr-rsync",
+		"rsync",
 		"-rv",
 		source,
 		dest,

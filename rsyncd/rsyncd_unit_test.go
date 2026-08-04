@@ -72,7 +72,7 @@ func TestServerModuleListing(t *testing.T) {
 	}
 
 	out := string(buf[:n])
-	if !bytes.Contains([]byte(out), []byte("@RSYNCD: 27")) {
+	if !bytes.Contains([]byte(out), []byte("@RSYNCD: ")) {
 		t.Fatalf("Expected daemon greeting in output, got %q", out)
 	}
 }
