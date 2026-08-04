@@ -47,7 +47,7 @@ func (st *Transfer) SendFiles(fileList *fileList) error {
 		}
 
 		fl := fileList.Files[fileIndex]
-		st.Progress.Reset(uint64(fl.Length))
+		st.Progress.Reset(uint64(fl.Length)) // #nosec G115 -- file length conversion to uint64 for progress
 
 		head, err := st.receiveSums()
 		if err != nil {
@@ -131,7 +131,7 @@ func (st *Transfer) receiveSums() (rsync.SumHead, error) {
 		sb := rsync.SumBuf{
 			Index:  i,
 			Offset: offset,
-			Sum1:   uint32(shortChecksum),
+			Sum1:   uint32(shortChecksum), // #nosec G115 -- short checksum uint32 conversion
 		}
 		if i == head.ChecksumCount-1 && head.RemainderLength != 0 {
 			sb.Len = int64(head.RemainderLength)
@@ -223,7 +223,7 @@ func (st *Transfer) sendFile(fileIndex int32, fl file) error {
 		}
 		chunk := buf[:n]
 		// chunk size (“rawtok” variable in openrsync)
-		if err := st.Conn.WriteInt32(int32(len(chunk))); err != nil {
+		if err := st.Conn.WriteInt32(int32(len(chunk))); err != nil { // #nosec G115 -- rawtok chunk length conversion to int32 wire format
 			return err
 		}
 		n, err = st.Conn.Writer.Write(chunk)

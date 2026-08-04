@@ -107,7 +107,7 @@ func WithTLSCertKeyPair(certFile, keyFile string) Option {
 // WithTLSClientCA enables mTLS and sets the Client CA certificate pool for verifying client certs.
 func WithTLSClientCA(caFile string, requireClientCert bool) Option {
 	return serverOptionFunc(func(s *Server) {
-		caPEM, err := os.ReadFile(caFile)
+		caPEM, err := os.ReadFile(caFile) // #nosec G304 -- TLS CA certificate file loaded from explicit configured path
 		if err != nil {
 			s.tlsErr = fmt.Errorf("failed to read Client CA file: %v", err)
 			return
@@ -479,7 +479,7 @@ func (s *Server) handleConn(ctx context.Context, conn *Conn, module *Module, pc 
 	//
 	// Computed the same way that tridge rsync does it, but the details do not
 	// matter. The goal is to have a checksum seed each time.
-	sessionChecksumSeed := int32(time.Now().Unix()) ^ (int32(os.Getpid()) << 6)
+	sessionChecksumSeed := int32(time.Now().Unix()) ^ (int32(os.Getpid()) << 6) // #nosec G115 -- checksum seed generation int32 conversion
 
 	c := &rsyncwire.Conn{
 		Reader: rd,
@@ -592,7 +592,7 @@ func (s *Server) handleConnReceiver(module *Module, crd *rsyncwire.CountingReade
 		Seed:     sessionChecksumSeed,
 		Progress: progress.NewPrinter(io.Discard, time.Now),
 	}
-	if err := os.MkdirAll(rt.Dest, 0o755); err != nil {
+	if err := os.MkdirAll(rt.Dest, 0o755); err != nil { // #nosec G301 -- rsync default destination directory permission (0755)
 		return fmt.Errorf("MkdirAll(dest=%s): %v", rt.Dest, err)
 	}
 	rt.DestRoot, err = os.OpenRoot(rt.Dest)

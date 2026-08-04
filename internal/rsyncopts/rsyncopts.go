@@ -171,6 +171,11 @@ func NewOptionsWithDefaults(osenv *rsyncos.Env) *Options {
 	return &opts
 }
 
+// NewOptionsWithCustomDefaults is an alias for NewOptionsWithDefaults.
+func NewOptionsWithCustomDefaults(osenv *rsyncos.Env) *Options {
+	return NewOptionsWithDefaults(osenv)
+}
+
 // NewOptionsWithGokrazyDefaults is a backward-compatible alias for NewOptionsWithDefaults.
 func NewOptionsWithGokrazyDefaults(osenv *rsyncos.Env) *Options {
 	return NewOptionsWithDefaults(osenv)
@@ -181,6 +186,9 @@ func NewOptionsWithGokrazyDefaults(osenv *rsyncos.Env) *Options {
 type ClientOptions struct {
 	DontRestrict int
 }
+
+// CustomClientOptions is an alias for ClientOptions.
+type CustomClientOptions = ClientOptions
 
 // GokrazyClientOptions is an alias for ClientOptions.
 type GokrazyClientOptions = ClientOptions
@@ -202,6 +210,9 @@ type DaemonOptions struct {
 	ModuleMap        string
 }
 
+// CustomDaemonOptions is an alias for DaemonOptions.
+type CustomDaemonOptions = DaemonOptions
+
 // GokrazyDaemonOptions is an alias for DaemonOptions.
 type GokrazyDaemonOptions = DaemonOptions
 
@@ -220,6 +231,10 @@ type Options struct {
 	osenv *rsyncos.Env
 	table func() []poptOption
 
+	CustomClient ClientOptions
+	CustomDaemon DaemonOptions
+
+	// Backward-compatibility aliases
 	GokrazyClient ClientOptions
 	GokrazyDaemon DaemonOptions
 
@@ -494,7 +509,7 @@ func (o *Options) setOutputVerbosity(prio priority) error {
 	}
 	for j := 0; j <= o.verbose; j++ {
 		if j < len(infoVerbosity) {
-			if err := parseOutputWords(o.osenv, infoWords[:], o.info[:], infoVerbosity[j], prio); err != nil {
+			if err := parseOutputWords(o.osenv, infoWords[:], o.info[:], infoVerbosity[j], prio); err != nil { // #nosec G602 -- bounds checked by j < len(infoVerbosity)
 				return err
 			}
 		}
@@ -783,9 +798,9 @@ func (o *Options) SetTLS(v bool) {
 		o.tls = 0
 	}
 }
-func (o *Options) SetTLSCA(v string)         { o.tls_ca = v }
-func (o *Options) SetTLSCert(v string)       { o.tls_cert = v }
-func (o *Options) SetTLSKey(v string)        { o.tls_key = v }
+func (o *Options) SetTLSCA(v string)   { o.tls_ca = v }
+func (o *Options) SetTLSCert(v string) { o.tls_cert = v }
+func (o *Options) SetTLSKey(v string)  { o.tls_key = v }
 func (o *Options) SetTLSInsecure(v bool) {
 	if v {
 		o.tls_insecure = 1
@@ -793,15 +808,16 @@ func (o *Options) SetTLSInsecure(v bool) {
 		o.tls_insecure = 0
 	}
 }
+
 func (o *Options) WorkerCount() int {
 	if o.workers > 0 {
 		return o.workers
 	}
 	return runtime.NumCPU() * 2
 }
-func (o *Options) SetWorkers(n int) { o.workers = n }
-func (o *Options) XferDirs() int              { return o.xfer_dirs }
-func (o *Options) FilterRules() []string      { return o.filterRules }
+func (o *Options) SetWorkers(n int)      { o.workers = n }
+func (o *Options) XferDirs() int         { return o.xfer_dirs }
+func (o *Options) FilterRules() []string { return o.filterRules }
 func (o *Options) Progress() bool {
 	return o.info[INFO_PROGRESS] > 0
 }
@@ -1393,7 +1409,7 @@ var errNotYetImplemented = errors.New("option not yet implemented in gorsync")
 
 func NewContext(opts *Options) *Context {
 	table := opts.table()
-	table = slices.Concat(opts.GokrazyClient.table(), table)
+	table = slices.Concat(opts.CustomClient.table(), table)
 	return &Context{
 		Options: opts,
 		table:   table,
@@ -1444,7 +1460,7 @@ func (pc *Context) ParseArguments(osenv *rsyncos.Env, args []string) error {
 		case OPT_DAEMON:
 			// Parse the whole command-line using the daemon options table.
 			table := opts.daemonTable()
-			table = slices.Concat(opts.GokrazyDaemon.table(), table)
+			table = slices.Concat(opts.CustomDaemon.table(), table)
 			pc := Context{
 				Options: opts,
 				table:   table,

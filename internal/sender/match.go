@@ -76,7 +76,7 @@ func (st *Transfer) hashSearch(targets []target, tagTable map[uint16]int, head r
 			k = remaining
 		}
 
-		chunk, err := ms.ptr(offset, int32(k))
+		chunk, err := ms.ptr(offset, int32(k)) // #nosec G115 -- chunk size k conversion to int32
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func (st *Transfer) hashSearch(targets []target, tagTable map[uint16]int, head r
 	tagHits := 0
 Outer:
 	for {
-		tag := rsyncchecksum.Tag2(uint16(s1), uint16(s2))
+		tag := rsyncchecksum.Tag2(uint16(s1), uint16(s2)) // #nosec G115 -- rolling checksum uint32 to uint16 tag conversion
 		var sum2 []byte
 		doneCsum2 := false
 		j, ok := tagTable[tag]
@@ -122,7 +122,7 @@ Outer:
 				// st.logger.Printf("potential match at %d target=%d %d sum=%08x", offset, j, i, sum)
 
 				if !doneCsum2 {
-					buf, err := ms.ptr(offset, int32(l))
+					buf, err := ms.ptr(offset, int32(l)) // #nosec G115 -- block length conversion to int32
 					if err != nil {
 						return err
 					}
@@ -177,14 +177,14 @@ Outer:
 		if more {
 			mmore = 1
 		}
-		update, err := ms.ptr(offset-backup, int32(int64(k)+mmore+backup))
+		update, err := ms.ptr(offset-backup, int32(int64(k)+mmore+backup)) // #nosec G115 -- offset calculation conversion to int32
 		if err != nil {
 			return err
 		}
 		update = update[backup:]
 
 		s1 -= rsyncchecksum.SignExtend(update[0])
-		s2 -= uint32(k) * rsyncchecksum.SignExtend(update[0])
+		s2 -= uint32(k) * rsyncchecksum.SignExtend(update[0]) // #nosec G115 -- block length k conversion to uint32
 
 		if more {
 			s1 += rsyncchecksum.SignExtend(update[k])
@@ -192,8 +192,8 @@ Outer:
 		} else {
 			k--
 		}
-		s1 = uint32(uint16(s1))
-		s2 = uint32(uint16(s2))
+		s1 = uint32(uint16(s1)) // #nosec G115 -- 16-bit uint16 to uint32 bitwise truncation
+		s2 = uint32(uint16(s2)) // #nosec G115 -- 16-bit uint16 to uint32 bitwise truncation
 
 		if backup >= int64(head.BlockLength)+chunkSize && end-offset > chunkSize {
 			// Prevent offset-st.lastMatch from growing too large by flushing
@@ -214,7 +214,7 @@ Outer:
 	}
 
 	if st.Opts.InfoGTE(rsyncopts.INFO_PROGRESS, 1) {
-		st.Progress.Show(uint64(offset), true)
+		st.Progress.Show(uint64(offset), true) // #nosec G115 -- offset int64 to uint64 conversion for progress
 	}
 
 	{
@@ -260,7 +260,7 @@ func (st *Transfer) matched(h hash.Hash, ms *mapStruct, head rsync.SumHead, offs
 
 	for j := int64(0); j < n; j += chunkSize {
 		n1 := min(int64(chunkSize), n-j)
-		chunk, err := ms.ptr(st.lastMatch+j, int32(n1))
+		chunk, err := ms.ptr(st.lastMatch+j, int32(n1)) // #nosec G115 -- chunk length int64 to int32 conversion
 		if err != nil {
 			return err
 		}
@@ -274,7 +274,7 @@ func (st *Transfer) matched(h hash.Hash, ms *mapStruct, head rsync.SumHead, offs
 	}
 
 	if st.Opts.InfoGTE(rsyncopts.INFO_PROGRESS, 1) {
-		st.Progress.MaybeShow(uint64(offset), false)
+		st.Progress.MaybeShow(uint64(offset), false) // #nosec G115 -- offset int64 to uint64 conversion for progress
 	}
 
 	return nil

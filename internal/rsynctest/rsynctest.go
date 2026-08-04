@@ -121,7 +121,7 @@ func New(t *testing.T, modules []rsyncd.Module, opts ...Option) *TestServer {
 		}
 		ts.listener = ln
 	}
-	t.Cleanup(func() { ts.listener.Close() })
+	t.Cleanup(func() { _ = ts.listener.Close() })
 
 	t.Logf("listening on %s", ts.listener.Addr())
 	_, port, err := net.SplitHostPort(ts.listener.Addr().String())
@@ -333,17 +333,17 @@ func WriteLargeDataFile(t *testing.T, source string, headPattern, bodyPattern, e
 	// create large data file in source directory to be copied
 	content := ConstructLargeDataFile(headPattern, bodyPattern, endPattern)
 	large := filepath.Join(source, "large-data-file")
-	if err := os.MkdirAll(filepath.Dir(large), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(large), 0o755); err != nil { // #nosec G301 -- test directory permission (0755)
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(large, content, 0o644); err != nil {
+	if err := os.WriteFile(large, content, 0o644); err != nil { // #nosec G306 -- test payload file permission (0644)
 		t.Fatal(err)
 	}
 }
 
 func DataFileMatches(fn string, headPattern, bodyPattern, endPattern []byte) error {
 	want := ConstructLargeDataFile(headPattern, bodyPattern, endPattern)
-	got, err := os.ReadFile(fn)
+	got, err := os.ReadFile(fn) // #nosec G304 -- test verification file read
 	if err != nil {
 		return err
 	}
@@ -430,7 +430,7 @@ var (
 	rsyncVersionRe   = regexp.MustCompile(`rsync\s*version ([v0-9.]+)`)
 	rsyncVersionOnce = sync.OnceValue(func() string {
 		any := discoverOnce().anyRsync()
-		version := exec.Command(any, "--version")
+		version := exec.Command(any, "--version") // #nosec G204 -- test rsync version discovery
 		version.Stderr = os.Stderr
 		b, err := version.Output()
 		if err != nil {

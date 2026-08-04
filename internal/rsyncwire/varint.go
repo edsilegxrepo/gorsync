@@ -71,14 +71,14 @@ func WriteVarInt(w io.Writer, val int64) error {
 	}
 	if val < (1 << 14) {
 		var buf [2]byte
-		buf[0] = byte(0x80 | (val >> 8))
+		buf[0] = byte(0x80 | (val >> 8)) // #nosec G115 -- varint packing shift to byte
 		buf[1] = byte(val & 0xff)
 		_, err := w.Write(buf[:])
 		return err
 	}
 	if val < (1 << 21) {
 		var buf [3]byte
-		buf[0] = byte(0xc0 | (val >> 16))
+		buf[0] = byte(0xc0 | (val >> 16)) // #nosec G115 -- varint packing shift to byte
 		buf[1] = byte((val >> 8) & 0xff)
 		buf[2] = byte(val & 0xff)
 		_, err := w.Write(buf[:])
@@ -86,7 +86,7 @@ func WriteVarInt(w io.Writer, val int64) error {
 	}
 	if val < (1 << 28) {
 		var buf [4]byte
-		buf[0] = byte(0xe0 | (val >> 24))
+		buf[0] = byte(0xe0 | (val >> 24)) // #nosec G115 -- varint packing shift to byte
 		buf[1] = byte((val >> 16) & 0xff)
 		buf[2] = byte((val >> 8) & 0xff)
 		buf[3] = byte(val & 0xff)
@@ -95,7 +95,7 @@ func WriteVarInt(w io.Writer, val int64) error {
 	}
 	if val < (int64(1) << 35) {
 		var buf [5]byte
-		buf[0] = byte(0xf0 | (val >> 32))
+		buf[0] = byte(0xf0 | (val >> 32)) // #nosec G115 -- varint packing shift to byte
 		buf[1] = byte((val >> 24) & 0xff)
 		buf[2] = byte((val >> 16) & 0xff)
 		buf[3] = byte((val >> 8) & 0xff)
@@ -105,7 +105,7 @@ func WriteVarInt(w io.Writer, val int64) error {
 	}
 	if val < (int64(1) << 42) {
 		var buf [6]byte
-		buf[0] = byte(0xf8 | (val >> 40))
+		buf[0] = byte(0xf8 | (val >> 40)) // #nosec G115 -- varint packing shift to byte
 		buf[1] = byte((val >> 32) & 0xff)
 		buf[2] = byte((val >> 24) & 0xff)
 		buf[3] = byte((val >> 16) & 0xff)
@@ -116,7 +116,7 @@ func WriteVarInt(w io.Writer, val int64) error {
 	}
 	if val < (int64(1) << 49) {
 		var buf [7]byte
-		buf[0] = byte(0xfc | (val >> 48))
+		buf[0] = byte(0xfc | (val >> 48)) // #nosec G115 -- varint packing shift to byte
 		buf[1] = byte((val >> 40) & 0xff)
 		buf[2] = byte((val >> 32) & 0xff)
 		buf[3] = byte((val >> 24) & 0xff)
@@ -128,7 +128,7 @@ func WriteVarInt(w io.Writer, val int64) error {
 	}
 	if val < (int64(1) << 56) {
 		var buf [8]byte
-		buf[0] = byte(0xfe | (val >> 56))
+		buf[0] = byte(0xfe | (val >> 56)) // #nosec G115 -- varint packing shift to byte
 		buf[1] = byte((val >> 48) & 0xff)
 		buf[2] = byte((val >> 40) & 0xff)
 		buf[3] = byte((val >> 32) & 0xff)
@@ -150,7 +150,7 @@ func WriteVarInt(w io.Writer, val int64) error {
 // ReadVarInt32 reads a 32-bit protocol 32 varint integer.
 func ReadVarInt32(r io.Reader) (int32, error) {
 	val, err := ReadVarInt(r)
-	return int32(val), err
+	return int32(val), err // #nosec G115 -- varint int64 to int32 conversion
 }
 
 // WriteVarInt32 writes a 32-bit protocol 32 varint integer.

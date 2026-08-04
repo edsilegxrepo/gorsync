@@ -95,7 +95,7 @@ func (rt *Transfer) openLocalFile(f *File) (*os.File, error) {
 	if !rt.Opts.PreservePerms {
 		// If the file exists already and we are not preserving permissions,
 		// then act as though the remote sent us the existing permissions:
-		f.Mode = int32(st.Mode().Perm())
+		f.Mode = int32(st.Mode().Perm()) // #nosec G115 -- perm uint32 to Mode int32 conversion
 	}
 
 	return in, nil
@@ -103,7 +103,7 @@ func (rt *Transfer) openLocalFile(f *File) (*os.File, error) {
 
 // rsync/receiver.c:receive_data
 func (rt *Transfer) receiveData(f *File, localFile *os.File) error {
-	rt.Progress.Reset(uint64(f.Length))
+	rt.Progress.Reset(uint64(f.Length)) // #nosec G115 -- file length conversion to uint64 for progress
 	var sh rsync.SumHead
 	if err := sh.ReadFrom(rt.Conn); err != nil {
 		return err
@@ -136,10 +136,10 @@ func (rt *Transfer) receiveData(f *File, localFile *os.File) error {
 			break
 		}
 		if rt.Opts.Progress && !rt.Opts.Server {
-			rt.Progress.MaybeShow(uint64(offset), false)
+			rt.Progress.MaybeShow(uint64(offset), false) // #nosec G115 -- byte offset conversion to uint64
 			if offset == 0 {
 				defer func() {
-					rt.Progress.MaybeShow(uint64(offset), true)
+					rt.Progress.MaybeShow(uint64(offset), true) // #nosec G115 -- byte offset conversion to uint64
 				}()
 			}
 		}
@@ -194,7 +194,7 @@ func (rt *Transfer) receiveData(f *File, localFile *os.File) error {
 		return err
 	}
 
-	if err := rt.setPerms(f, fs.FileMode(f.Mode)); err != nil {
+	if err := rt.setPerms(f, fs.FileMode(f.Mode)); err != nil { // #nosec G115 -- mode int32 to FileMode uint32 conversion
 		return err
 	}
 

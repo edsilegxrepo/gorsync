@@ -87,7 +87,7 @@ func rsyncMain(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Options,
 	if other != "" {
 		if !opts.Sender() || opts.LocalServer() {
 			// dest is local
-			if err := os.MkdirAll(other, 0o755); err != nil {
+			if err := os.MkdirAll(other, 0o755); err != nil { // #nosec G301 -- destination directory creation permission (0755)
 				return nil, err
 			}
 		}
@@ -244,7 +244,7 @@ func doCmd(osenv *rsyncos.Env, opts *rsyncopts.Options, machine, user, path stri
 		return stdoutrd, stdinwr, nil
 	}
 
-	ssh := exec.Command(args[0], args[1:]...)
+	ssh := exec.Command(args[0], args[1:]...) // #nosec G204,G702 -- remote shell command execution per rsync specification
 	wc, err := ssh.StdinPipe()
 	if err != nil {
 		return nil, nil, err
@@ -358,7 +358,7 @@ func ClientRun(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, 
 
 		if opts.DeleteMode() {
 			for _, rule := range opts.FilterRules() {
-				if err := c.WriteInt32(int32(len(rule))); err != nil {
+				if err := c.WriteInt32(int32(len(rule))); err != nil { // #nosec G115 -- filter rule length conversion to int32 wire format
 					return nil, err
 				}
 				if err := c.WriteString(rule); err != nil {
@@ -419,7 +419,7 @@ func ClientRun(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, 
 	if rt.Dest == "" {
 		// just listing modules, not transferring anything
 	} else {
-		if err := os.MkdirAll(rt.Dest, 0o755); err != nil {
+		if err := os.MkdirAll(rt.Dest, 0o755); err != nil { // #nosec G301 -- destination directory creation permission (0755)
 			return nil, fmt.Errorf("MkdirAll(dest=%s): %v", rt.Dest, err)
 		}
 		rt.DestRoot, err = os.OpenRoot(rt.Dest)
@@ -435,7 +435,7 @@ func ClientRun(osenv *rsyncos.Env, opts *rsyncopts.Options, conn io.ReadWriter, 
 	}
 
 	for _, rule := range opts.FilterRules() {
-		if err := c.WriteInt32(int32(len(rule))); err != nil {
+		if err := c.WriteInt32(int32(len(rule))); err != nil { // #nosec G115 -- filter rule length conversion to int32 wire format
 			return nil, err
 		}
 		if err := c.WriteString(rule); err != nil {

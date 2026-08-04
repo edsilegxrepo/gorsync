@@ -23,7 +23,7 @@ func Tag(sum uint32) uint16 {
 // This function is exported for use in the rolling checksum in match.go.
 func SignExtend(b byte) uint32 {
 	val := uint32(b)
-	return uint32(int32(val<<24) >> 24)
+	return uint32(int32(val<<24) >> 24) // #nosec G115 -- sign extension bitwise cast
 }
 
 func Checksum1(buf []byte) uint32 {

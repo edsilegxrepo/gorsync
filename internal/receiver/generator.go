@@ -56,7 +56,7 @@ func (rt *Transfer) touchUpDirs(fileList []*File) error {
 		if rt.Opts.DebugGTE(rsyncopts.DEBUG_TIME, 2) {
 			rt.Logger.Printf("touchUpDirs: %s (%d)", f.Name, idx)
 		}
-		mode := fs.FileMode(f.Mode)
+		mode := fs.FileMode(f.Mode) // #nosec G115 -- mode int32 to FileMode uint32 conversion
 		if mode&rsync.S_IFMT != rsync.S_IFDIR {
 			continue // not a directory
 		}
@@ -193,7 +193,7 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 			err = fmt.Errorf("file removed")
 		}
 		if err != nil {
-			perm := fs.FileMode(f.Mode) & os.ModePerm
+			perm := fs.FileMode(f.Mode) & os.ModePerm // #nosec G115 -- mode int32 to FileMode uint32 conversion
 			if rt.Opts.DebugGTE(rsyncopts.DEBUG_GENR, 1) {
 				rt.Logger.Printf("MkdirAll(%s, %v)", f.Name, perm)
 			}
@@ -207,7 +207,7 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 			}
 			// fallthrough to setPerms and return nil
 		}
-		mode := fs.FileMode(f.Mode)
+		mode := fs.FileMode(f.Mode) // #nosec G115 -- mode int32 to FileMode uint32 conversion
 		if mode&syscall.S_IWUSR == 0 {
 			// The directory is lacking write permission,
 			// so we need to create it writeable as long as
@@ -231,7 +231,7 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 					rt.Logger.Printf("existing target: %q", target)
 				}
 				if target == f.LinkTarget {
-					if err := rt.setPerms(f, fs.FileMode(f.Mode)); err != nil {
+					if err := rt.setPerms(f, fs.FileMode(f.Mode)); err != nil { // #nosec G115 -- mode int32 to FileMode uint32 conversion
 						return err
 					}
 					return nil // skip
@@ -246,7 +246,7 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 		if err := symlink(rt.DestRoot, f.LinkTarget, f.Name); err != nil {
 			return err
 		}
-		if err := rt.setPerms(f, fs.FileMode(f.Mode)); err != nil {
+		if err := rt.setPerms(f, fs.FileMode(f.Mode)); err != nil { // #nosec G115 -- mode int32 to FileMode uint32 conversion
 			return err
 		}
 		return nil
@@ -276,7 +276,7 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 		if rt.Opts.DebugGTE(rsyncopts.DEBUG_GENR, 1) {
 			rt.Logger.Printf("requesting: %s", f.Name)
 		}
-		if err := rt.Conn.WriteInt32(int32(idx)); err != nil {
+		if err := rt.Conn.WriteInt32(int32(idx)); err != nil { // #nosec G115 -- file list index conversion to int32 wire format
 			return err
 		}
 		if rt.Opts.DryRun {
@@ -315,14 +315,14 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 		if rt.Opts.InfoGTE(rsyncopts.INFO_SKIP, 1) {
 			rt.Logger.Printf("skipping %s", local)
 		}
-		if err := rt.setPerms(f, fs.FileMode(f.Mode)); err != nil {
+		if err := rt.setPerms(f, fs.FileMode(f.Mode)); err != nil { // #nosec G115 -- mode int32 to FileMode uint32 conversion
 			return err
 		}
 		return nil
 	}
 
 	if rt.Opts.DryRun {
-		if err := rt.Conn.WriteInt32(int32(idx)); err != nil {
+		if err := rt.Conn.WriteInt32(int32(idx)); err != nil { // #nosec G115 -- file list index conversion to int32 wire format
 			return err
 		}
 
@@ -341,7 +341,7 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 	if rt.Opts.DebugGTE(rsyncopts.DEBUG_GENR, 1) {
 		rt.Logger.Printf("sending sums for: %s", f.Name)
 	}
-	if err := rt.Conn.WriteInt32(int32(idx)); err != nil {
+	if err := rt.Conn.WriteInt32(int32(idx)); err != nil { // #nosec G115 -- file list index conversion to int32 wire format
 		_ = in.Close()
 		return err
 	}
@@ -368,7 +368,7 @@ func (rt *Transfer) generateAndSendSums(in *os.File, fileLen int64) error {
 
 		sum1 := rsyncchecksum.Checksum1(b)
 		sum2 := rsyncchecksum.Checksum2(rt.Seed, b)
-		if err := rt.Conn.WriteInt32(int32(sum1)); err != nil {
+		if err := rt.Conn.WriteInt32(int32(sum1)); err != nil { // #nosec G115 -- checksum sum1 conversion to int32 wire format
 			return err
 		}
 		if _, err := rt.Conn.Writer.Write(sum2); err != nil {

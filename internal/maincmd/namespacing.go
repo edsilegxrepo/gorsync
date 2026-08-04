@@ -47,7 +47,7 @@ func namespace(osenv *rsyncos.Env, modules []rsyncd.Module, listen string) error
 		return err
 	}
 
-	cmd := exec.Command(exe, os.Args[1:]...)
+	cmd := exec.Command(exe, os.Args[1:]...) // #nosec G204,G702 -- linux namespace re-execution for process isolation
 	cmd.Dir = "/"
 	// TODO: clean the environment
 	cmd.Env = append(os.Environ(),

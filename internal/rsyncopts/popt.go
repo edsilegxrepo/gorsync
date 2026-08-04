@@ -261,7 +261,7 @@ func (pc *Context) poptGetNextOpt() (int32, error) {
 			}
 		}
 		if opt.val != 0 && argType != POPT_ARG_VAL {
-			return int32(opt.val), nil
+			return int32(opt.val), nil // #nosec G115 -- popt return value conversion to int32
 		}
 	}
 }

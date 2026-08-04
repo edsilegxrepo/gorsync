@@ -29,8 +29,8 @@ func SumSizesSqroot(contentLen int64) rsync.SumHead {
 	const checksumLength = 16 // TODO?
 
 	return rsync.SumHead{
-		ChecksumCount:   int32((contentLen + (int64(blockLength) - 1)) / int64(blockLength)),
-		RemainderLength: int32(contentLen % int64(blockLength)),
+		ChecksumCount:   int32((contentLen + (int64(blockLength) - 1)) / int64(blockLength)), // #nosec G115 -- block count conversion to int32 wire format
+		RemainderLength: int32(contentLen % int64(blockLength)),                              // #nosec G115 -- remainder length conversion to int32 wire format
 		BlockLength:     blockLength,
 		ChecksumLength:  checksumLength,
 	}

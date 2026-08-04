@@ -176,7 +176,7 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 
 	// 2.   inherited filename length (optional, byte)
 	// 3.   filename length (integer or byte)
-	s.fec.WriteInt32(int32(len(name)))
+	s.fec.WriteInt32(int32(len(name))) // #nosec G115 -- filename length conversion to int32 wire format
 
 	// 4.   file (byte array)
 	s.fec.WriteString(name)
@@ -195,7 +195,7 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 
 	// 6.   file modification time (optional, integer)
 	// TODO: this will overflow in 2038! :(
-	s.fec.WriteInt32(int32(info.ModTime().Unix()))
+	s.fec.WriteInt32(int32(info.ModTime().Unix())) // #nosec G115 -- unix timestamp conversion to int32 wire format
 
 	// 7.   file mode (optional, mode_t, integer)
 	mode := int32(info.Mode() & os.ModePerm)
@@ -281,7 +281,7 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err // TODO
 		}
-		s.fec.WriteInt32(int32(len(target)))
+		s.fec.WriteInt32(int32(len(target))) // #nosec G115 -- symlink target length conversion to int32 wire format
 		s.fec.WriteString(target)
 	}
 
@@ -411,7 +411,7 @@ func (st *Transfer) SendFileList(localDir string, paths []string, excl *filterRu
 	if st.Opts.PreserveUid() {
 		for uid, name := range uidMap {
 			fec.WriteInt32(uid)
-			fec.WriteByte(byte(len(name)))
+			fec.WriteByte(byte(len(name))) // #nosec G115 -- username string length conversion to byte
 			fec.WriteString(name)
 		}
 		fec.WriteInt32(endOfSet)
@@ -419,7 +419,7 @@ func (st *Transfer) SendFileList(localDir string, paths []string, excl *filterRu
 	if st.Opts.PreserveGid() {
 		for gid, name := range gidMap {
 			fec.WriteInt32(gid)
-			fec.WriteByte(byte(len(name)))
+			fec.WriteByte(byte(len(name))) // #nosec G115 -- groupname string length conversion to byte
 			fec.WriteString(name)
 		}
 		fec.WriteInt32(endOfSet)

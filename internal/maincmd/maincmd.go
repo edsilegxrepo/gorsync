@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/edsilegxrepo/rsync/internal/anonssh"
 	"github.com/edsilegxrepo/rsync/internal/restrict"
@@ -22,7 +23,7 @@ import (
 	"github.com/edsilegxrepo/rsync/rsyncd"
 
 	// For profiling and debugging
-	_ "net/http/pprof"
+	_ "net/http/pprof" // #nosec G108 -- profiling endpoint import for optional daemon monitoring
 )
 
 // Standard rsync(1) exit codes for granular diagnostic reporting
@@ -128,7 +129,7 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 			roDirs = append(roDirs, paths...)
 		} else {
 			for _, path := range paths {
-				if err := os.MkdirAll(path, 0o755); err != nil {
+				if err := os.MkdirAll(path, 0o755); err != nil { // #nosec G301 -- target path directory creation permission (0755)
 					return nil, err
 				}
 			}
@@ -284,8 +285,11 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 	if monitoringListen := daemonOpts.MonitoringListen; monitoringListen != "" {
 		go func() {
 			osenv.Logf("HTTP server for monitoring listening on http://%s/debug/pprof", monitoringListen)
-			// nosemgrep: go.lang.security.audit.net.use-tls.use-tls, go.lang.security.audit.net.pprof.pprof-debug-exposure
-			if err := http.ListenAndServe(monitoringListen, nil); err != nil {
+			srv := &http.Server{
+				Addr:              monitoringListen,
+				ReadHeaderTimeout: 5 * time.Second,
+			}
+			if err := srv.ListenAndServe(); err != nil {
 				osenv.Logf("-monitoring_listen: %v", err)
 			}
 		}()

@@ -14,7 +14,7 @@ func restrictToModules(modules []Module) error {
 			continue
 		}
 		if mod.Writable {
-			if err := os.MkdirAll(mod.Path, 0o755); err != nil {
+			if err := os.MkdirAll(mod.Path, 0o755); err != nil { // #nosec G301 -- module path directory creation permission (0755)
 				return fmt.Errorf("MkdirAll(mod=%s): %v", mod.Name, err)
 			}
 			rwDirs = append(rwDirs, mod.Path)

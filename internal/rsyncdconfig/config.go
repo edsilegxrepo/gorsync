@@ -44,7 +44,7 @@ func FromString(input string) (*Config, error) {
 }
 
 func FromFile(path string) (*Config, error) {
-	input, err := os.ReadFile(path)
+	input, err := os.ReadFile(path) // #nosec G304 -- TOML daemon config file loaded from explicit configured path
 	if err != nil {
 		return nil, err
 	}

@@ -42,7 +42,7 @@ type File struct {
 
 // FileMode converts from the Linux permission bits to Go’s permission bits.
 func (f *File) FileMode() fs.FileMode {
-	ret := fs.FileMode(f.Mode) & fs.ModePerm
+	ret := fs.FileMode(f.Mode) & fs.ModePerm // #nosec G115 -- mode int32 to FileMode uint32 conversion
 
 	mode := f.Mode & rsync.S_IFMT
 	switch mode {

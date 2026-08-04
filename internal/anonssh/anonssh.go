@@ -163,7 +163,7 @@ func genHostKey(keyPath string) ([]byte, error) {
 		Type:  "PRIVATE KEY",
 		Bytes: x509b,
 	}
-	f, err := os.OpenFile(keyPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	f, err := os.OpenFile(keyPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600) // #nosec G304 -- SSH host key file loaded from explicit configured path
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func loadHostKey(path string) (ssh.Signer, error) {
 	b, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		if os.IsNotExist(err) {
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { // #nosec G301 -- SSH host key parent directory permission (0755)
 				return nil, err
 			}
 			b, err = genHostKey(path)
