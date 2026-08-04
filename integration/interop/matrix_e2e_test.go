@@ -594,6 +594,7 @@ writable = true
 	return func() {
 		if daemonCmd.Process != nil {
 			_ = daemonCmd.Process.Kill()
+			_ = daemonCmd.Wait()
 		}
 	}
 }
@@ -629,6 +630,7 @@ writable = true
 	return func() {
 		if daemonCmd.Process != nil {
 			_ = daemonCmd.Process.Kill()
+			_ = daemonCmd.Wait()
 		}
 		if t.Failed() {
 			t.Logf("Win TLS Daemon Output:\n%s", daemonLog.String())
@@ -1731,6 +1733,7 @@ func TestPhase8SSH4Scenarios(t *testing.T) {
 		stop := func() {
 			if cmdSSHD.Process != nil {
 				_ = cmdSSHD.Process.Kill()
+				_ = cmdSSHD.Wait()
 			}
 			t.Logf("sshd log for port %d:\n%s", port, sshdLog.String())
 		}
@@ -1784,6 +1787,9 @@ func TestPhase8SSH4Scenarios(t *testing.T) {
 
 		wslTmpKey := fmt.Sprintf("/tmp/client_key_sc2_%d", port)
 		_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", fmt.Sprintf("cp %s %s && chmod 600 %s", toWSLPath(clientKey), wslTmpKey, wslTmpKey)).Run()
+		defer func() {
+			_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", fmt.Sprintf("rm -f %s", wslTmpKey)).Run()
+		}()
 		wslSrcFile := toWSLPath(srcFile)
 		destFile := filepath.Join(dstDir, "real_ssh_linux2.txt")
 		hostIP := getWSLHostIP()
@@ -1847,6 +1853,9 @@ func TestPhase8SSH4Scenarios(t *testing.T) {
 
 		wslTmpKey := fmt.Sprintf("/tmp/client_key_sc4_%d", port)
 		_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", fmt.Sprintf("cp %s %s && chmod 600 %s", toWSLPath(clientKey), wslTmpKey, wslTmpKey)).Run()
+		defer func() {
+			_ = exec.Command("wsl.exe", "--cd", "/tmp", "bash", "-c", fmt.Sprintf("rm -f %s", wslTmpKey)).Run()
+		}()
 		wslSrcFile := toWSLPath(srcFile)
 		destFile := filepath.Join(dstDir, "real_ssh_linux_win4.txt")
 		hostIP := getWSLHostIP()
