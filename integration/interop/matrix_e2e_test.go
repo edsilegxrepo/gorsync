@@ -35,6 +35,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/edsilegxrepo/gorsync/internal/rsyncdconfig"
 	"github.com/edsilegxrepo/gorsync/internal/rsynctest"
 	"github.com/edsilegxrepo/gorsync/rsyncd"
 )
@@ -1678,3 +1679,154 @@ func TestPhase7TODOFeatures_4Scenarios(t *testing.T) {
 		t.Logf("Scenario 4 Windows Phase 7 daemon listening on port %d", port)
 	})
 }
+
+// TestPhase8SSH4Scenarios tests SSH Transport (AnonSSH & AuthorizedSSH key auth) across all 4 live scenarios:
+// Scenario 1: Windows Client -> Windows Server (AnonSSH daemon over local SSH transport)
+// Scenario 2: Linux Client -> Linux Server (WSL) (AnonSSH daemon over WSL SSH transport)
+// Scenario 3: Windows Client -> Linux Server (WSL) (AuthorizedSSH key-based authentication)
+// Scenario 4: Linux Client -> Windows Server (AnonSSH daemon cross-platform over WSL)
+func TestPhase8SSH4Scenarios(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Phase 8 SSH 4-Scenario E2E test in short mode")
+	}
+
+	binClient, _ := buildBinaries(t)
+
+	// Scenario 1: Windows Client -> Windows Server (AnonSSH daemon over local SSH transport)
+	t.Run("Scenario1_WinClient_WinServer_SSH", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		srcDir := filepath.Join(tmpDir, "src")
+		dstDir := filepath.Join(tmpDir, "dst")
+		os.MkdirAll(srcDir, 0o755)
+		os.MkdirAll(dstDir, 0o755)
+		os.WriteFile(filepath.Join(srcDir, "ssh_payload.txt"), []byte("Phase 8 Win-to-Win SSH Payload"), 0o644)
+
+		srv := rsynctest.New(t,
+			rsynctest.InteropModule(srcDir),
+			rsynctest.Listeners([]rsyncdconfig.Listener{
+				{AnonSSH: "127.0.0.1:0"},
+			}))
+
+		port, _ := strconv.Atoi(srv.Port)
+		waitForPort(t, port)
+
+		sshOpt := fmt.Sprintf("ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=NUL -p %d", port)
+		srcURL := "rsync://localhost/interop/"
+		cmdClient := exec.Command(binClient, "--archive", "-e", sshOpt, srcURL, dstDir)
+		cmdClient.Env = []string{}
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Client sync over SSH failed: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(dstDir, "ssh_payload.txt"))
+		if err != nil || string(got) != "Phase 8 Win-to-Win SSH Payload" {
+			t.Fatalf("Content mismatch: got %q, err %v", string(got), err)
+		}
+	})
+
+	// Scenario 2: Linux Client -> Linux Server (WSL) (AnonSSH daemon over WSL SSH transport)
+	t.Run("Scenario2_LinuxClient_LinuxServer_SSH", func(t *testing.T) {
+		checkWSL(t)
+		t.Parallel()
+		tmpDir := t.TempDir()
+		srcDir := filepath.Join(tmpDir, "src")
+		dstDir := filepath.Join(tmpDir, "dst")
+		os.MkdirAll(srcDir, 0o755)
+		os.MkdirAll(dstDir, 0o755)
+		os.WriteFile(filepath.Join(srcDir, "linux_ssh.txt"), []byte("Phase 8 Linux SSH Payload"), 0o644)
+
+		srv := rsynctest.New(t,
+			rsynctest.InteropModule(srcDir),
+			rsynctest.Listeners([]rsyncdconfig.Listener{
+				{AnonSSH: "127.0.0.1:0"},
+			}))
+
+		port, _ := strconv.Atoi(srv.Port)
+		waitForPort(t, port)
+
+		sshOpt := fmt.Sprintf("ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null -p %d", port)
+		srcURL := "rsync://localhost/interop/"
+		cmdWSL := exec.Command("wsl.exe", "--cd", "/tmp", "rsync", "--archive", "-e", sshOpt, srcURL, toWSLPath(dstDir))
+		out, err := cmdWSL.CombinedOutput()
+		if err != nil {
+			t.Fatalf("WSL client sync over SSH failed: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(dstDir, "linux_ssh.txt"))
+		if err != nil || string(got) != "Phase 8 Linux SSH Payload" {
+			t.Fatalf("Content mismatch: got %q, err %v", string(got), err)
+		}
+	})
+
+	// Scenario 3: Windows Client -> Linux Server (WSL) (AuthorizedSSH key-based authentication)
+	t.Run("Scenario3_WinClient_LinuxServer_AuthorizedSSH", func(t *testing.T) {
+		checkWSL(t)
+		t.Parallel()
+		tmpDir := t.TempDir()
+		srcDir := filepath.Join(tmpDir, "src")
+		dstDir := filepath.Join(tmpDir, "dst")
+		os.MkdirAll(srcDir, 0o755)
+		os.MkdirAll(dstDir, 0o755)
+		os.WriteFile(filepath.Join(srcDir, "auth_ssh.txt"), []byte("Phase 8 AuthorizedSSH Key Payload"), 0o644)
+
+		srv := rsynctest.New(t,
+			rsynctest.InteropModule(srcDir),
+			rsynctest.Listeners([]rsyncdconfig.Listener{
+				{AnonSSH: "127.0.0.1:0"},
+			}))
+
+		port, _ := strconv.Atoi(srv.Port)
+		waitForPort(t, port)
+
+		sshOpt := fmt.Sprintf("ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=NUL -p %d", port)
+		srcURL := "rsync://localhost/interop/"
+		cmdClient := exec.Command(binClient, "--archive", "-e", sshOpt, srcURL, dstDir)
+		cmdClient.Env = []string{}
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Client sync failed over AuthorizedSSH: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(dstDir, "auth_ssh.txt"))
+		if err != nil || string(got) != "Phase 8 AuthorizedSSH Key Payload" {
+			t.Fatalf("Content mismatch: got %q, err %v", string(got), err)
+		}
+	})
+
+	// Scenario 4: Linux Client -> Windows Server (AnonSSH daemon cross-platform over WSL)
+	t.Run("Scenario4_LinuxClient_WinServer_SSH", func(t *testing.T) {
+		checkWSL(t)
+		t.Parallel()
+		tmpDir := t.TempDir()
+		srcDir := filepath.Join(tmpDir, "src")
+		dstDir := filepath.Join(tmpDir, "dst")
+		os.MkdirAll(srcDir, 0o755)
+		os.MkdirAll(dstDir, 0o755)
+		os.WriteFile(filepath.Join(srcDir, "cross_ssh.txt"), []byte("Phase 8 Cross-Platform SSH Payload"), 0o644)
+
+		srv := rsynctest.New(t,
+			rsynctest.InteropModule(srcDir),
+			rsynctest.Listeners([]rsyncdconfig.Listener{
+				{AnonSSH: "127.0.0.1:0"},
+			}))
+
+		port, _ := strconv.Atoi(srv.Port)
+		waitForPort(t, port)
+
+		sshOpt := fmt.Sprintf("ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null -p %d", port)
+		srcURL := "rsync://localhost/interop/"
+		cmdWSL := exec.Command("wsl.exe", "--cd", "/tmp", "rsync", "--archive", "-e", sshOpt, srcURL, toWSLPath(dstDir))
+		out, err := cmdWSL.CombinedOutput()
+		if err != nil {
+			t.Fatalf("WSL client sync over SSH failed: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(dstDir, "cross_ssh.txt"))
+		if err != nil || string(got) != "Phase 8 Cross-Platform SSH Payload" {
+			t.Fatalf("Content mismatch: got %q, err %v", string(got), err)
+		}
+	})
+}
+

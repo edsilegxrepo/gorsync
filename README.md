@@ -27,7 +27,7 @@ This document provides product documentation, security assessment metrics, CLI a
 
 | Security Domain | Implementation & Controls | Authoritative Spec Link |
 | :--- | :--- | :--- |
-| **Encryption in Transit** | Supported over SSH transport pipes (`rsync -e ssh`) or IPSec/TLS tunnels. Plaintext TCP connections default to port 873. | [ARCHITECTURE.md#1-architecture-and-design-choices](ARCHITECTURE.md#1-architecture-and-design-choices) |
+| **Encryption in Transit** | Supported over SSH transport pipes (`gorsync -e ssh`) or IPSec/TLS tunnels. Resolves OpenSSH binaries on Windows via `%OPENSSH_HOME%` or `D:\inetd\sshd\`. | [ARCHITECTURE.md#1-architecture-and-design-choices](ARCHITECTURE.md#1-architecture-and-design-choices) |
 | **Secret Management** | Challenge-Response MD4 authentication. Passwords reside in `rsyncd.secrets` (`0600`), `--password-file`, or `RSYNC_PASSWORD`. Plaintext passwords are **never sent across the wire**. | [ARCHITECTURE.md#5-security-architecture](ARCHITECTURE.md#5-security-architecture) |
 | **Authentication Config** | Module-level `auth_users` challenge-response. Failed authentication attempts terminate the session immediately. | [ARCHITECTURE.md#5-security-architecture](ARCHITECTURE.md#5-security-architecture) |
 | **Access Control (RBAC)** | Module-level `read only = true/false` rules, Landlock ACL restrictions on Linux, and user access validation. | [ARCHITECTURE.md#5-security-architecture](ARCHITECTURE.md#5-security-architecture) |

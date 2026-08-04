@@ -172,7 +172,7 @@ func doCmd(osenv *rsyncos.Env, opts *rsyncopts.Options, machine, user, path stri
 	if !opts.LocalServer() {
 		cmd := opts.ShellCommand()
 		if cmd == "" {
-			cmd = "ssh"
+			cmd = rsyncos.ResolveSSH("ssh")
 			if e := os.Getenv("RSYNC_RSH"); e != "" {
 				cmd = e
 			}

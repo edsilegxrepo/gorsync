@@ -4,6 +4,10 @@ import (
 	"context"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/edsilegxrepo/gorsync/internal/log"
 )
@@ -37,3 +41,29 @@ func (s *Env) Logf(format string, v ...any) {
 }
 
 func (s *Env) Restrict() bool { return !s.DontRestrict }
+
+// ResolveSSH resolves the path to an OpenSSH executable (e.g. "ssh", "sshd", "ssh-keygen").
+// On Windows, it checks in order:
+//  1. OPENSSH_HOME environment variable (%OPENSSH_HOME%\<binaryName>.exe)
+//  2. Default path D:\inetd\sshd\<binaryName>.exe
+//  3. System PATH / default binary name
+func ResolveSSH(binaryName string) string {
+	if runtime.GOOS == "windows" {
+		exeName := binaryName
+		if !strings.HasSuffix(strings.ToLower(exeName), ".exe") {
+			exeName += ".exe"
+		}
+		if home := os.Getenv("OPENSSH_HOME"); home != "" {
+			candidate := filepath.Join(home, exeName)
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate
+			}
+		}
+		candidate := filepath.Join(`d:\inetd\sshd`, exeName)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return binaryName
+}
+
