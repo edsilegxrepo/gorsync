@@ -652,7 +652,7 @@ func TestInteropRemoteDaemonSSH(t *testing.T) {
 	// ensure the user running the tests (root when doing the privileged run!)
 	// has an SSH private key:
 	privKeyPath := filepath.Join(t.TempDir(), "ssh_private_key")
-	genKey := exec.Command(rsyncos.ResolveSSH("ssh-keygen"),
+	genKey := exec.Command("ssh-keygen",
 		"-N", "",
 		"-t", "ed25519",
 		"-f", privKeyPath)
