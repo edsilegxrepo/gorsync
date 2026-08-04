@@ -142,12 +142,10 @@ func NewOptions(osenv *rsyncos.Env) *Options {
 	return &opts
 }
 
-var gokrazyDefaults = Options{
-	msgs2stderr:    2, // Default: send errors to stderr for local & remote-shell transfers
-	output_motd:    1,
-	human_readable: 1,
-	// TODO: if/when allow_inc_recurse gets implemented,
-	// default to 1 to match tridge rsync
+var defaultOptions = Options{
+	msgs2stderr:          2, // Default: send errors to stderr for local & remote-shell transfers
+	output_motd:          1,
+	human_readable:       1,
 	allow_inc_recurse:    0,
 	xfer_dirs:            -1,
 	relative_paths:       -1,
@@ -161,34 +159,42 @@ var gokrazyDefaults = Options{
 	protocol_version:     27,
 }
 
-// NewOptions returns an Options struct with all options initialized to their
+// NewOptionsWithDefaults returns an Options struct with all options initialized to their
 // default values. Note that ParseArguments will set some options (that default
 // to -1) based on the encountered command-line flags and built-in rules.
-func NewOptionsWithGokrazyDefaults(osenv *rsyncos.Env) *Options {
-	opts := gokrazyDefaults // copy
+func NewOptionsWithDefaults(osenv *rsyncos.Env) *Options {
+	opts := defaultOptions // copy
 	opts.osenv = osenv
 	opts.table = func() []poptOption {
-		return opts.gokrazyTable()
+		return opts.rsyncTable()
 	}
 	return &opts
 }
 
-// GokrazyClientOptions contains additional command-line flags, prefixed with
+// NewOptionsWithGokrazyDefaults is a backward-compatible alias for NewOptionsWithDefaults.
+func NewOptionsWithGokrazyDefaults(osenv *rsyncos.Env) *Options {
+	return NewOptionsWithDefaults(osenv)
+}
+
+// ClientOptions contains additional command-line flags, prefixed with
 // gokr. (like --gokr.dont_restrict) to not clash with rsync flag names.
-type GokrazyClientOptions struct {
+type ClientOptions struct {
 	DontRestrict int
 }
 
-func (o *GokrazyClientOptions) table() []poptOption {
+// GokrazyClientOptions is an alias for ClientOptions.
+type GokrazyClientOptions = ClientOptions
+
+func (o *ClientOptions) table() []poptOption {
 	return []poptOption{
 		/* longName, shortName, argInfo, arg, val */
 		{"gokr.dont_restrict", "", POPT_ARG_NONE, &o.DontRestrict, 0},
 	}
 }
 
-// GokrazyDaemonOptions contains additional command-line flags, prefixed with
+// DaemonOptions contains additional command-line flags, prefixed with
 // gokr. (like --gokr.modulemap) to not clash with rsync flag names.
-type GokrazyDaemonOptions struct {
+type DaemonOptions struct {
 	Config           string
 	Listen           string
 	MonitoringListen string
@@ -196,7 +202,10 @@ type GokrazyDaemonOptions struct {
 	ModuleMap        string
 }
 
-func (o *GokrazyDaemonOptions) table() []poptOption {
+// GokrazyDaemonOptions is an alias for DaemonOptions.
+type GokrazyDaemonOptions = DaemonOptions
+
+func (o *DaemonOptions) table() []poptOption {
 	return []poptOption{
 		/* longName, shortName, argInfo, arg, val */
 		{"gokr.config", "", POPT_ARG_STRING, &o.Config, 0},
@@ -211,8 +220,8 @@ type Options struct {
 	osenv *rsyncos.Env
 	table func() []poptOption
 
-	GokrazyClient GokrazyClientOptions
-	GokrazyDaemon GokrazyDaemonOptions
+	GokrazyClient ClientOptions
+	GokrazyDaemon DaemonOptions
 
 	// not directly referenced in the table, but used in the special case code.
 	do_compression int
@@ -839,7 +848,7 @@ func (o *Options) daemonTable() []poptOption {
 	}
 }
 
-func (o *Options) gokrazyTable() []poptOption {
+func (o *Options) rsyncTable() []poptOption {
 	// Commented out options are not yet implemented.
 	return []poptOption{
 		/* longName, shortName, argInfo, arg, val */
@@ -1380,7 +1389,7 @@ func (o *Options) tridgeTable() []poptOption {
 	}
 }
 
-var errNotYetImplemented = errors.New("option not yet implemented in gokrazy/rsync")
+var errNotYetImplemented = errors.New("option not yet implemented in gorsync")
 
 func NewContext(opts *Options) *Context {
 	table := opts.table()

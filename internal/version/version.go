@@ -10,5 +10,5 @@ func Read() string {
 	if !ok {
 		mainVersion = "<runtime/debug.ReadBuildInfo failed>"
 	}
-	return "gokrazy/rsync " + mainVersion
+	return "gorsync " + mainVersion
 }
