@@ -1,8 +1,8 @@
 [Unit]
-Description=gokrazy rsync server daemon (for serving files)
+Description=rsync server daemon (for serving files)
 
 [Service]
-ExecStart=/usr/bin/gokr-rsync --daemon
+ExecStart=/usr/bin/rsync --daemon
 
 # See also http://0pointer.net/blog/dynamic-users-with-systemd.html
 DynamicUser=yes

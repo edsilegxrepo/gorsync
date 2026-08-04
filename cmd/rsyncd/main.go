@@ -1,4 +1,4 @@
-// Tool rsyncd is the standalone rsync server daemon executable.
+// Tool gorsyncd is the standalone rsync server daemon executable.
 package main
 
 import (

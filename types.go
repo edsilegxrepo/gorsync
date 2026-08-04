@@ -6,6 +6,8 @@ import (
 	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
 )
 
+// SumBuf represents a single block checksum tuple (Adler32 fast sum1 + MD4/MD5/SHA256 strong sum2)
+// used during the rsync delta matching algorithm.
 // rsync/rsync.h:struct sum_buf
 type SumBuf struct {
 	Offset int64
@@ -15,6 +17,8 @@ type SumBuf struct {
 	Sum2   [16]byte
 }
 
+// SumHead represents the header and collection of block checksums exchanged between
+// sender and receiver during delta synchronization.
 // TODO: remove connection.go:sumHead in favor of this type
 type SumHead struct {
 	// “number of blocks” (openrsync)

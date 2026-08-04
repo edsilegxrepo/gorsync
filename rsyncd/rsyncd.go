@@ -1,3 +1,16 @@
+// Package rsyncd implements an rsync server daemon supporting standalone TCP listeners,
+// systemd socket activation, mTLS client certificate verification, challenge-response authentication,
+// and hermetic OS-level jail sandboxing (`os.Root` / `pivot_root`).
+//
+// Core Components:
+//   - `Server`: Daemon server instance holding modules, options, listeners, and TLS certificates.
+//   - `Module`: Named exported directory unit with path, permissions, secrets, and auth user rules.
+//   - `HandleConn`: Manages client connection handshake, protocol negotiation, and request dispatch.
+//
+// Data Flow:
+//   TCP/TLS Listener -> Handshake Greetings -> Auth Validation -> Module Jailing -> Transfer Engine.
+//
+// Original Package Doc:
 // Package rsyncd implements an rsync server (only), but note that gokrazy/rsync
 // contains a native Go rsync implementation that supports sending and receiving
 // files as client or server, compatible with the original tridge rsync (from

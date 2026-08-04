@@ -1,4 +1,4 @@
-// Tool rsync is the main rsync client/server executable.
+// Tool gorsync is the main rsync client/server CLI executable.
 package main
 
 import (

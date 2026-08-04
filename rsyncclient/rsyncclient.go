@@ -1,3 +1,15 @@
+// Package rsyncclient provides an embedded Go API for interacting programmatically with remote rsync daemons
+// and servers without shelling out to external binaries.
+//
+// Core Components:
+//   - `Client`: Primary entry point for constructing client configurations and executing transfers.
+//   - `ListFiles`: Retrieves structured file object metadata (`[]rsyncclient.File`) from remote modules.
+//   - `Sync`: Synchronizes remote module paths to local target directories or `WritableFS` instances.
+//
+// Data Flow:
+//   Go Application -> rsyncclient.New() -> Net Dial -> Protocol Handshake -> File List Engine -> Receiver Target.
+//
+// Original Package Doc:
 // Package rsyncclient implements an rsync client (only), but note that
 // edsilegxrepo/rsync contains a native Go rsync implementation that supports sending
 // and receiving files as client or server, compatible with the original tridge

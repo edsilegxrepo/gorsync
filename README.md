@@ -1,6 +1,6 @@
-# gokrazy/rsync Operational & Product Guide (`PRODUCT.md`)
+# rsync Operational & Product Guide (`README.md`)
 
-This document provides product documentation, security assessment metrics, CLI argument references, usage examples, deployment configurations, and operational workflows for `gokrazy/rsync`.
+This document provides product documentation, security assessment metrics, CLI argument references, usage examples, deployment configurations, and operational workflows for `rsync`.
 
 > [!NOTE]
 > Detailed technical specifications are maintained in [ARCHITECTURE.md](ARCHITECTURE.md), and test architecture/coverage reports are maintained in [TESTING.md](TESTING.md). Those documents remain authoritative.
@@ -9,9 +9,9 @@ This document provides product documentation, security assessment metrics, CLI a
 
 ## 1. Application Overview and Objectives
 
-`gokrazy/rsync` is a pure Go implementation of the `rsync` file synchronization protocol suite, offering:
-- **`gokr-rsync` CLI**: A fast, cross-platform client for local and network file synchronization.
-- **`gokr-rsyncd` Daemon**: A secure rsync daemon capable of running as a standalone service, systemd socket-activated service, or embedded container daemon.
+`gorsync` is a pure Go implementation of the `rsync` file synchronization protocol suite, offering:
+- **`gorsync` CLI**: A fast, cross-platform client for local and network file synchronization.
+- **`gorsyncd` Daemon**: A secure rsync daemon capable of running as a standalone service, systemd socket-activated service, or embedded container daemon.
 - **`rsyncclient` & `WritableFS` Libraries**: Go packages allowing developers to embed rsync synchronization directly into Go applications or connect to custom storage engines (e.g. S3, database, or in-memory targets).
 
 ### Core Objectives
@@ -49,7 +49,7 @@ This document provides product documentation, security assessment metrics, CLI a
 
 ## 4. Command Line Arguments Reference
 
-### `gokr-rsync` CLI Options
+### `gorsync` CLI Options
 
 | Flag / Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
@@ -82,8 +82,8 @@ This document provides product documentation, security assessment metrics, CLI a
 | `--timeout` | `int` | `0` | Sets socket I/O deadline in seconds to prevent stalls. |
 | `--temp-dir`, `-T` | `string` | `""` | Stages incoming files inside a temporary directory before atomic rename. |
 | `--password-file` | `string` | `""` | Reads daemon password from specified file path. |
-| `--daemon` | `bool` | `false` | Runs `gokr-rsync` as a background server daemon. |
-| `--gokr.config` | `string` | `""` | Path to TOML configuration file when running in `--daemon` mode. |
+| `--daemon` | `bool` | `false` | Runs `gorsync` as a background server daemon. |
+| `--config` | `string` | `""` | Path to TOML configuration file when running in `--daemon` mode. |
 
 ---
 
@@ -92,7 +92,7 @@ This document provides product documentation, security assessment metrics, CLI a
 ### Example 1: Synchronizing Local Directories
 
 ```bash
-gokr-rsync -avP /var/log/app/ /backup/app-logs/
+gorsync -avP /var/log/app/ /backup/app-logs/
 ```
 
 #### Output Sample
@@ -114,18 +114,18 @@ total size is 1,585,264  speedup is 1.00
 ### Example 2: Synchronizing Over SSH
 
 ```bash
-gokr-rsync -av -e ssh /local/docs/ user@remote.server.com:/remote/docs/
+gorsync -av -e ssh /local/docs/ user@remote.server.com:/remote/docs/
 ```
 
 ---
 
-### Example 3: Running `gokr-rsyncd` Daemon
+### Example 3: Running `gorsyncd` Daemon
 
-Create configuration file `/etc/gokr-rsyncd.toml`:
+Create configuration file `/etc/gorsyncd.toml`:
 
 ```toml
 [[listener]]
-rsyncd = "127.0.0.1:873"
+gorsyncd = "127.0.0.1:873"
 
 [[module]]
 name = "public"
@@ -143,13 +143,13 @@ secrets_file = "/etc/rsyncd.secrets"
 Start daemon:
 
 ```bash
-gokr-rsync --daemon --gokr.config=/etc/gokr-rsyncd.toml
+gorsyncd --daemon --config=/etc/gorsyncd.toml
 ```
 
 #### Startup Output Sample
 ```text
-2026/08/03 14:05:00 config file /etc/gokr-rsyncd.toml loaded
-2026/08/03 14:05:00 gokrazy rsync, pid 14820
+2026/08/03 14:05:00 config file /etc/gorsyncd.toml loaded
+2026/08/03 14:05:00 gorsyncd server daemon, pid 14820
 2026/08/03 14:05:00 environment: unprivileged
 2026/08/03 14:05:00 2 rsync modules configured in total
 2026/08/03 14:05:00 rsync module "public" with path /srv/rsync/public configured
@@ -169,7 +169,7 @@ chmod 0600 /tmp/pass.txt
 
 Execute authenticated transfer:
 ```bash
-gokr-rsync -av --password-file=/tmp/pass.txt rsync://alice@127.0.0.1:873/backups/ /tmp/restored-backups/
+gorsync -av --password-file=/tmp/pass.txt rsync://alice@127.0.0.1:873/backups/ /tmp/restored-backups/
 ```
 
 ---

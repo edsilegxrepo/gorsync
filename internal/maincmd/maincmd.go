@@ -1,3 +1,19 @@
+// Package maincmd implements the CLI argument processing, execution routing, transport dialing,
+// and exit code management for the rsync CLI binary.
+//
+// Objectives:
+//   - Provide command-line entry points for local transfers, remote SSH transfers, and daemon servers.
+//   - Enforce standard rsync(1) exit codes (0=OK, 1=Syntax, 2=Protocol, 3=FileSelect, 5=ClientStart, 10=SocketIO, 11=FileIO, 20=Signal).
+//
+// Core Components:
+//   - `Main()`: Main CLI entry point parsing flags, options, and routing execution.
+//   - `Client()`: Client-side connection dialer over TCP, SSH, or TLS socket streams.
+//   - `Server()`: Server-side daemon handler running under standalone TCP, systemd sockets, or SSH pipes.
+//
+// Data Flow:
+//   CLI Flags -> Popt Parser -> Transport Dialer -> Security Authentication -> Core Engine Transfer Loop.
+//
+// Original Package Doc:
 // Package maincmd implements a subset of the '$ rsync' CLI surface, namely that it can:
 //   - serve as a server daemon over TCP or SSH (via SSH session stdin/stdout)
 //   - act as "client" CLI for connecting to the server

@@ -1,12 +1,12 @@
-# gokrazy/rsync Test Suite Documentation (`TESTING.md`)
+# rsync Test Suite Documentation (`TESTING.md`)
 
-This document provides a comprehensive overview of the testing architecture, logical test flows, technical requirements, test index, code coverage metrics, realistic data simulation strategy, execution instructions, and maintenance guidelines for `gokrazy/rsync`.
+This document provides a comprehensive overview of the testing architecture, logical test flows, technical requirements, test index, code coverage metrics, realistic data simulation strategy, execution instructions, and maintenance guidelines for `rsync`.
 
 ---
 
 ## 1. Architecture, Design & Principles of the Test Suite
 
-The `gokrazy/rsync` test suite is designed for **portability, isolation, zero-flakiness, and deterministic verification** across Windows and Linux platforms.
+The `rsync` test suite is designed for **portability, isolation, zero-flakiness, and deterministic verification** across Windows and Linux platforms.
 
 ### Key Principles
 1. **Zero External Dependencies**: Standard Go tests run natively without requiring external binaries (`socat`, `python`, `bash` wrappers on non-WSL platforms).
@@ -19,7 +19,7 @@ The `gokrazy/rsync` test suite is designed for **portability, isolation, zero-fl
 
 ```mermaid
 graph TD
-    subgraph TestSuite ["gokrazy/rsync Test Suite"]
+    subgraph TestSuite ["rsync Test Suite"]
         UT["Unit Tests (Internal Engine)<br/>receiver, sender, rsyncwire, rsyncopts"]
         IT["Integration Tests (Live Listeners)<br/>errors, flist, fsfs, ipacl, sync"]
         MT["Cross-Platform Interop Matrix<br/>integration/interop"]
@@ -55,14 +55,14 @@ The test suite divides into **Positive Functional Testing** (validating core fun
 sequenceDiagram
     autonumber
     participant TestRunner as Go Test Runner (t.TempDir)
-    participant Client as gokr-rsync / Linux rsync
-    participant Server as gokr-rsyncd / Linux rsync Daemon
+    participant Client as gorsync / Linux rsync
+    participant Server as gorsyncd / Linux rsync Daemon
     participant FS as Storage (Disk / WritableFS)
 
     rect rgb(240, 248, 255)
         note over TestRunner, FS: Positive Functional Flow
         TestRunner->>Server: Spawn Listener on Free Port (127.0.0.1:PORT)
-        TestRunner->>Client: Execute rsync [-av | -H | --checksum | --delete]
+        TestRunner->>Client: Execute gorsync [-av | -H | --checksum | --delete]
         Client->>Server: Handshake & MD4 Auth (if configured)
         Server->>FS: Read File List & Generate Delta Checksums
         Server-->>Client: Stream Wire Messages
@@ -106,7 +106,7 @@ sequenceDiagram
 | **Matrix Topologies** | `TestE2EMatrixAndStress/Win_Client_->_Win_Server` | Verifies full transfer functionality between Windows Client and Windows Server across 9 flag combinations. | **PASS**: 100% SHA256 data parity, 0 write failures. |
 | **Matrix Topologies** | `TestE2EMatrixAndStress/Linux_Client_->_Linux_Server` | Verifies full transfer functionality between WSL Linux Client and WSL Linux Server. | **PASS**: All flag subtests succeed inside WSL container. |
 | **Matrix Topologies** | `TestE2EMatrixAndStress/Win_Client_->_Linux_Server` | Verifies Windows Client pushing/pulling to/from WSL Linux Server daemon. | **PASS**: Interop socket communication and file creation succeed. |
-| **Matrix Topologies** | `TestE2EMatrixAndStress/Linux_Client_->_Win_Server` | Verifies WSL Linux Client pushing/pulling to/from Windows `gokr-rsyncd` server daemon. | **PASS**: Interop socket communication succeeds. |
+| **Matrix Topologies** | `TestE2EMatrixAndStress/Linux_Client_->_Win_Server` | Verifies WSL Linux Client pushing/pulling to/from Windows `gorsyncd` server daemon. | **PASS**: Interop socket communication succeeds. |
 | **Flags & Options** | `Flag_Archive_Progress` | Validates recursive directory transfer (`-a`) and progress emission (`--progress`). | **PASS**: All subdirectories/files created with matching mtime/permissions. |
 | **Flags & Options** | `Flag_Checksum` | Validates content-based transfer (`--checksum` / `-c`) bypassing mtime checks. | **PASS**: Out-of-sync content updated correctly without timestamp triggers. |
 | **Flags & Options** | `Flag_Exclude_Filter` | Validates `--exclude=*.bak` pattern filtering during file list generation. | **PASS**: `.bak` files omitted from destination directory. |
@@ -119,7 +119,7 @@ sequenceDiagram
 | **Security & Sandbox**| `TestE2EChrootSandbox` | Validates OS `os.Root` / `pivot_root` path traversal containment (`../` and symlink escape attempts). | **PASS**: Escape blocked; 0 secret files read or written outside module root. |
 | **Authentication** | `TestE2EAuthDaemon` | Validates MD4 challenge-response authentication with `auth_users` & `secrets_file` protected via `secretprotector`. | **PASS**: Unauthenticated request rejected; `--password-file` and `RSYNC_PASSWORD` succeed. |
 | **Credential Protection** | `TestProtectedSecret` | Validates `libsecsecrets` AES-256-GCM in-memory password protection, `.Reveal()`, and `.Destroy()` zeroing. | **PASS**: Decryption matches; post-destruction access fails safely with zeroed RAM. |
-| **Local Transfer** | `TestE2ELocalDiskToDisk` | Validates local disk-to-disk transfers (`gokr-rsync -av -H /src/ /dest/`) natively on Windows & Linux WSL. | **PASS**: 100% SHA256 parity, permissions (`0755`/`0644`), mtime, symlinks, and hardlinks preserved. |
+| **Local Transfer** | `TestE2ELocalDiskToDisk` | Validates local disk-to-disk transfers (`gorsync -av -H /src/ /dest/`) natively on Windows & Linux WSL. | **PASS**: 100% SHA256 parity, permissions (`0755`/`0644`), mtime, symlinks, and hardlinks preserved. |
 | **Stress & Volume** | `TestE2EStress` | Stress tests daemon under 500 nested files, ~11MB payload, and 8 concurrent parallel clients. | **PASS**: 100% concurrent client completion without data corruption or memory leaks. |
 | **Virtual FS API** | `TestReceiver_WritableFS` | Validates `rsync.WritableFS` in-memory mock filesystem upload target. | **PASS**: Upload succeeds in memory without physical disk writes. |
 | **Structured API** | `TestClientListFilesMock` | Validates `rsyncclient.ListFiles` API returning structured Go file objects. | **PASS**: `[]rsyncclient.File` returned with correct names and sizes. |
@@ -136,7 +136,7 @@ sequenceDiagram
 
 ## 5. Code Coverage Report
 
-`gokrazy/rsync` enforces an **80%+ code coverage requirement** across all core logic packages.
+`rsync` enforces an **80%+ code coverage requirement** across all core logic packages.
 
 ### Package Coverage Breakdown
 

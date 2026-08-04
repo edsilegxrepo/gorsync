@@ -1,5 +1,16 @@
 //go:build windows
 
+// Package interop_test implements the end-to-end integration and interoperability test suite.
+//
+// Test Strategy Explanation:
+//   1. Cross-Platform Topologies: Executes live rsync transfers across 4 dataflow topologies
+//      (Win Client -> Win Server, Linux Client -> Linux Server, Win Client -> Linux Server, Linux Client -> Win Server).
+//   2. Protocol Negotiation: Tests compatibility across Protocol 27, Protocol 30/31 (AlmaLinuxOS-9),
+//      and Protocol 32 (AlmaLinuxOS-10 / rsync 3.4.x).
+//   3. Security & Sandboxing: Verifies mTLS auth, challenge-response auth, protected secret zeroing,
+//      and OS-level jail containment (os.Root / pivot_root).
+//   4. Multi-Threading & Stress: Validates 500-file, 11MB binary payloads across 8 parallel client connections.
+
 package interop_test
 
 import (

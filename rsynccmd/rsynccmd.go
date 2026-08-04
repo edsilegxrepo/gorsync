@@ -1,4 +1,4 @@
-// Package rsynccmd provides a command-like interface to gokrazy/rsync, which
+// Package rsynccmd provides a command-like interface to the rsync engine, which
 // contains a native Go rsync implementation that supports sending and receiving
 // files as client or server, compatible with the original tridge rsync (from
 // the samba project) or openrsync (used on OpenBSD and macOS 15+).

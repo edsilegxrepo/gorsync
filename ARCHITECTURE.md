@@ -1,18 +1,18 @@
-# gokrazy/rsync Architecture Specification (`ARCHITECTURE.md`)
+# rsync Architecture Specification (`ARCHITECTURE.md`)
 
-This document defines the architectural specification, data flow logic, concurrency model, package dependency topology, and security model of `gokrazy/rsync`, a pure Go implementation of the `rsync` protocol suite (client, daemon, and embedded library).
+This document defines the architectural specification, data flow logic, concurrency model, package dependency topology, and security model of `rsync`, a pure Go implementation of the `rsync` protocol suite (client, daemon, and embedded library).
 
 ---
 
 ## 1. Architecture and Design Choices, Assumptions, Edge Cases, Performance & Efficiency
 
 ### High-Level Architecture
-`gokrazy/rsync` is structured as a decoupled, modular Go engine. The core protocol engine (`rsyncwire`, `sender`, `receiver`, `rsyncopts`) is separated from IO transport wrappers (`maincmd`, `rsyncd`, `rsyncclient`), allowing execution as a standalone CLI binary (`gokr-rsync`), a background daemon (`gokr-rsyncd`), or an embedded library (`rsyncclient`).
+`gorsync` is structured as a decoupled, modular Go engine. The core protocol engine (`rsyncwire`, `sender`, `receiver`, `rsyncopts`) is separated from IO transport wrappers (`maincmd`, `rsyncd`, `rsyncclient`), allowing execution as a standalone CLI binary (`gorsync`), a background daemon (`gorsyncd`), or an embedded library (`rsyncclient`).
 
 ```mermaid
 graph TD
     subgraph Clients ["Client Layer"]
-        CLI["gokr-rsync CLI<br/>(cmd/gokr-rsync)"]
+        CLI["gorsync CLI<br/>(cmd/gorsync)"]
         API["rsyncclient Library<br/>(rsyncclient/rsyncclient.go)"]
     end
 
@@ -246,7 +246,7 @@ graph TD
 1. **Challenge-Response Authentication**: Passwords are never sent over the wire in plain text. The server issues a random 16-byte challenge string, and the client returns `MD4(password + challenge)` encoded in base64.
 2. **Hermetic Module Sandboxing**:
    - **`os.Root` (Go 1.24+)**: Enforces directory isolation at the OS handle level. File requests attempting path traversal (`../`) or escaping via symlinks are rejected with `path escapes from parent`.
-   - **Mount & PID Namespaces (`pivot_root`)**: On root Linux, `gokr-rsyncd` unshares mount/PID namespaces and executes `pivot_root`, making the module path `/` for the daemon process.
+   - **Mount & PID Namespaces (`pivot_root`)**: On root Linux, `gorsyncd` unshares mount/PID namespaces and executes `pivot_root`, making the module path `/` for the daemon process.
 3. **Resource Limit & Tarpit Protection**:
    - `--timeout`: Deadline-wrapped sockets terminate stalled or unresponsive clients/servers automatically.
    - Max delete limits (`--max-delete`): Prevents accidental mass deletions.
