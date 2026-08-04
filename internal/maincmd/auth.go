@@ -120,4 +120,3 @@ func checkPasswordFilePermissions(path string) error {
 	}
 	return nil
 }
-

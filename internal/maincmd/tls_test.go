@@ -103,3 +103,11 @@ func TestTLSOptionsParsing(t *testing.T) {
 		t.Errorf("expected TLSInsecure() to be true")
 	}
 }
+
+func TestGenerateTLSCertHelper(t *testing.T) {
+	t.Parallel()
+	certPath, keyPath := generateTestTLSCert(t, t.TempDir())
+	if certPath == "" || keyPath == "" {
+		t.Fatalf("expected non-empty certPath and keyPath")
+	}
+}

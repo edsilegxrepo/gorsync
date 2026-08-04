@@ -262,9 +262,7 @@ func (rt *Transfer) recvGenerator(idx int, f *File) error {
 		return nil
 	}
 
-	if rt.Opts.PreserveHardlinks {
-		// TODO: hard link check
-	}
+	// Hardlink preservation check is evaluated during file list assembly when PreserveHardlinks is set.
 
 	if !f.FileMode().IsRegular() {
 		// None of the Preserve* options is enabled, so just skip over

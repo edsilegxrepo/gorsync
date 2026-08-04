@@ -210,8 +210,7 @@ func (pc *Context) poptGetNextOpt() (int32, error) {
 			// neither long nor short? how can we end up here?
 			return -1, &PoptError{
 				Errno: POPT_ERROR_BADOPT,
-				//lint:ignore ST1005 we need this punctuation for dramatic effect!
-				Err: fmt.Errorf("neither long nor short option found?!"),
+				Err:   fmt.Errorf("neither long nor short option found"),
 			}
 		}
 		argType := opt.argInfo & POPT_ARG_MASK

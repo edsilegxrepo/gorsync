@@ -7,7 +7,8 @@
 //   - `Sync`: Synchronizes remote module paths to local target directories or `WritableFS` instances.
 //
 // Data Flow:
-//   Go Application -> rsyncclient.New() -> Net Dial -> Protocol Handshake -> File List Engine -> Receiver Target.
+//
+//	Go Application -> rsyncclient.New() -> Net Dial -> Protocol Handshake -> File List Engine -> Receiver Target.
 //
 // Original Package Doc:
 // Package rsyncclient implements an rsync client (only), but note that

@@ -68,6 +68,7 @@ func socketClient(ctx context.Context, osenv *rsyncos.Env, opts *rsyncopts.Optio
 			MinVersion: tls.VersionTLS12,
 		}
 		if opts.TLSInsecure() {
+			// nosemgrep: problem-based-packs.insecure-transport.go-stdlib.bypass-tls-verification.bypass-tls-verification
 			tlsConfig.InsecureSkipVerify = true
 		}
 		if opts.TLSCA() != "" {

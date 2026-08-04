@@ -172,7 +172,7 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 	s.fec.Reset()
 
 	// 1.   status byte (integer)
-	s.fec.WriteByte(flags)
+	_ = s.fec.WriteByte(flags)
 
 	// 2.   inherited filename length (optional, byte)
 	// 3.   filename length (integer or byte)
@@ -298,8 +298,6 @@ func (s *scopedWalker) walkFn(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-		} else {
-			// send empty md4 checksum
 		}
 		s.fec.WriteString(string(checksum))
 	}
@@ -405,13 +403,13 @@ func (st *Transfer) SendFileList(localDir string, paths []string, excl *filterRu
 	fec.Reset()
 
 	const endOfFileList = 0
-	fec.WriteByte(endOfFileList)
+	_ = fec.WriteByte(endOfFileList)
 
 	const endOfSet = 0
 	if st.Opts.PreserveUid() {
 		for uid, name := range uidMap {
 			fec.WriteInt32(uid)
-			fec.WriteByte(byte(len(name))) // #nosec G115 -- username string length conversion to byte
+			_ = fec.WriteByte(byte(len(name))) // #nosec G115 -- username string length conversion to byte
 			fec.WriteString(name)
 		}
 		fec.WriteInt32(endOfSet)
@@ -419,7 +417,7 @@ func (st *Transfer) SendFileList(localDir string, paths []string, excl *filterRu
 	if st.Opts.PreserveGid() {
 		for gid, name := range gidMap {
 			fec.WriteInt32(gid)
-			fec.WriteByte(byte(len(name))) // #nosec G115 -- groupname string length conversion to byte
+			_ = fec.WriteByte(byte(len(name))) // #nosec G115 -- groupname string length conversion to byte
 			fec.WriteString(name)
 		}
 		fec.WriteInt32(endOfSet)

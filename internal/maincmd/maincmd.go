@@ -11,7 +11,8 @@
 //   - `Server()`: Server-side daemon handler running under standalone TCP, systemd sockets, or SSH pipes.
 //
 // Data Flow:
-//   CLI Flags -> Popt Parser -> Transport Dialer -> Security Authentication -> Core Engine Transfer Loop.
+//
+//	CLI Flags -> Popt Parser -> Transport Dialer -> Security Authentication -> Core Engine Transfer Loop.
 //
 // Original Package Doc:
 // Package maincmd implements a subset of the '$ rsync' CLI surface, namely that it can:
@@ -416,4 +417,3 @@ func extractAndPrepareServerPaths(osenv *rsyncos.Env, opts *rsyncopts.Options, r
 	}
 	return paths, nil
 }
-

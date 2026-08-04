@@ -14,7 +14,8 @@
 //     and programmatic transfers.
 //
 // Data Flow:
-//   Client/Server Handshake -> Protocol Version & Checksum Negotiation -> Challenge-Response
-//   Authentication -> File List Exchange -> Delta Sum Generation -> Stream Transmission ->
-//   Atomic Temp-File Staging & Renaming.
+//
+//	Client/Server Handshake -> Protocol Version & Checksum Negotiation -> Challenge-Response
+//	Authentication -> File List Exchange -> Delta Sum Generation -> Stream Transmission ->
+//	Atomic Temp-File Staging & Renaming.
 package rsync

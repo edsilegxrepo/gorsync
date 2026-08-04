@@ -54,16 +54,15 @@ func ResolveSSH(binaryName string) string {
 			exeName += ".exe"
 		}
 		if home := os.Getenv("OPENSSH_HOME"); home != "" {
-			candidate := filepath.Join(home, exeName)
-			if _, err := os.Stat(candidate); err == nil {
+			candidate := filepath.Clean(filepath.Join(home, exeName))
+			if _, err := os.Stat(candidate); err == nil { // #nosec G703 -- cleaned candidate path stat check for SSH binary resolution
 				return candidate
 			}
 		}
-		candidate := filepath.Join(`d:\inetd\sshd`, exeName)
-		if _, err := os.Stat(candidate); err == nil {
+		candidate := filepath.Clean(filepath.Join(`d:\inetd\sshd`, exeName))
+		if _, err := os.Stat(candidate); err == nil { // #nosec G703 -- cleaned system path stat check for SSH binary resolution
 			return candidate
 		}
 	}
 	return binaryName
 }
-
