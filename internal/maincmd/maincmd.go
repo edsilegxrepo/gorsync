@@ -25,6 +25,32 @@ import (
 	_ "net/http/pprof"
 )
 
+// Standard rsync(1) exit codes for granular diagnostic reporting
+const (
+	ExitCodeOK          = 0  // Success
+	ExitCodeSyntax      = 1  // Syntax or usage error
+	ExitCodeProtocol    = 2  // Protocol incompatibility
+	ExitCodeFileSelect  = 3  // Errors selecting input/output files
+	ExitCodeStartClient = 5  // Error starting client-server protocol
+	ExitCodeSocketIO    = 10 // Error in socket I/O
+	ExitCodeFileIO      = 11 // Error in file I/O
+	ExitCodeSignal      = 20 // Received SIGUSR1 or SIGINT
+)
+
+// ExitError wraps errors with a granular rsync exit code.
+type ExitError struct {
+	Code int
+	Err  error
+}
+
+func (e *ExitError) Error() string {
+	return fmt.Sprintf("exit code %d: %v", e.Code, e.Err)
+}
+
+func (e *ExitError) Unwrap() error {
+	return e.Err
+}
+
 func version(osenv *rsyncos.Env) {
 	osenv.Logf("gokrazy rsync, pid %d", os.Getpid())
 }
@@ -119,7 +145,7 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 
 	if !opts.Daemon() {
 		if !osenv.DontRestrict {
-			osenv.DontRestrict = opts.GokrazyClient.DontRestrict == 1
+			osenv.DontRestrict = opts.CustomClient.DontRestrict == 1 || opts.GokrazyClient.DontRestrict == 1
 		}
 		return clientMain(ctx, osenv, opts, remaining)
 	}
@@ -132,8 +158,12 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 	var cfgfn string
 	var cfgErr error
 	if cfg == nil {
-		if opts.GokrazyDaemon.Config != "" {
-			cfgfn = opts.GokrazyDaemon.Config
+		daemonOpts := opts.CustomDaemon
+		if daemonOpts.Config == "" {
+			daemonOpts = opts.GokrazyDaemon
+		}
+		if daemonOpts.Config != "" {
+			cfgfn = daemonOpts.Config
 			cfg, cfgErr = rsyncdconfig.FromFile(cfgfn)
 		} else {
 			cfg, cfgfn, cfgErr = rsyncdconfig.FromDefaultFiles()
@@ -143,11 +173,13 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 				osenv.Logf("config file not found, relying on flags")
 				// a non-existant config file is not an error: users can start
 				// gokr-rsyncd with e.g. the -gokr.listen and -gokr.modulemap flags.
+				listen := daemonOpts.Listen
+				anonSSH := daemonOpts.AnonSSHListen
 				cfg = &rsyncdconfig.Config{
 					Listeners: []rsyncdconfig.Listener{
 						{
-							Rsyncd:  opts.GokrazyDaemon.Listen,
-							AnonSSH: opts.GokrazyDaemon.AnonSSHListen,
+							Rsyncd:  listen,
+							AnonSSH: anonSSH,
 						},
 					},
 					Modules: []rsyncd.Module{},
@@ -160,16 +192,21 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 		}
 	}
 
+	daemonOpts := opts.CustomDaemon
+	if daemonOpts.Listen == "" && daemonOpts.AnonSSHListen == "" && daemonOpts.ModuleMap == "" && daemonOpts.MonitoringListen == "" {
+		daemonOpts = opts.GokrazyDaemon
+	}
+
 	if os.IsNotExist(cfgErr) {
-		if opts.GokrazyDaemon.Listen == "" &&
-			opts.GokrazyDaemon.AnonSSHListen == "" {
+		if daemonOpts.Listen == "" &&
+			daemonOpts.AnonSSHListen == "" {
 			return nil, fmt.Errorf("neither -gokr.listen nor -gokr.anonssh_listen specified, and config file not found: %v", cfgErr)
 		}
 		// If no config file was found, and the user did not specify a
 		// -gokr.modulemap flag, use a default value to force the user to
 		// configure a module map.
-		if opts.GokrazyDaemon.ModuleMap == "" {
-			opts.GokrazyDaemon.ModuleMap = "nonex=/nonexistant/path"
+		if daemonOpts.ModuleMap == "" {
+			daemonOpts.ModuleMap = "nonex=/nonexistant/path"
 		}
 	} else {
 		if len(cfg.Listeners) == 0 ||
@@ -208,7 +245,7 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 		}
 	}
 
-	if moduleMap := opts.GokrazyDaemon.ModuleMap; moduleMap != "" {
+	if moduleMap := daemonOpts.ModuleMap; moduleMap != "" {
 		parts := strings.Split(moduleMap, "=")
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("malformed -gokr.modulemap parameter %q, expected <modulename>=<path>", moduleMap)
@@ -244,7 +281,7 @@ func Main(ctx context.Context, osenv *rsyncos.Env, args []string, cfg *rsyncdcon
 		osenv.Logf("rsync module %q with path %s configured", mod.Name, mod.Path)
 	}
 
-	if monitoringListen := opts.GokrazyDaemon.MonitoringListen; monitoringListen != "" {
+	if monitoringListen := daemonOpts.MonitoringListen; monitoringListen != "" {
 		go func() {
 			osenv.Logf("HTTP server for monitoring listening on http://%s/debug/pprof", monitoringListen)
 			// nosemgrep: go.lang.security.audit.net.use-tls.use-tls, go.lang.security.audit.net.pprof.pprof-debug-exposure

@@ -1,6 +1,7 @@
 package maincmd_test
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -30,5 +31,19 @@ func TestWriteTest(t *testing.T) {
 	err = maincmd.ExportCanUnexpectedlyWriteTo(nonExistent)
 	if err != nil {
 		t.Fatalf("canUnexpectedlyWriteTo on non-existent dir: %v", err)
+	}
+}
+
+func TestExitError(t *testing.T) {
+	baseErr := errors.New("test error")
+	err := &maincmd.ExitError{
+		Code: maincmd.ExitCodeSyntax,
+		Err:  baseErr,
+	}
+	if err.Code != 1 {
+		t.Fatalf("ExitCode mismatch: got %d, want 1", err.Code)
+	}
+	if err.Unwrap() != baseErr {
+		t.Fatalf("Unwrap mismatch: got %v", err.Unwrap())
 	}
 }
