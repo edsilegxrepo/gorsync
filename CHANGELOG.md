@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.7] - 2026-08-04
+
+### Added
+- **Phase 8 OpenSSH Real SSH Interoperability Suite**: Added `TestPhase8SSH4Scenarios` E2E test suite in `integration/interop/matrix_e2e_test.go` verifying all 4 real OpenSSH topologies (Win Client -> Win Server, Linux Client -> Linux Server WSL, Win Client -> Linux Server WSL, Linux Client -> Win Server WSL) live against OpenSSH daemons.
+- **POSIX Password File Permission Safety Checks**: Added `checkPasswordFilePermissions` in `internal/maincmd/auth.go` enforcing `0600` (non-group/world readable) POSIX permission checks on `--password-file` inputs.
+- **Systematic Inline Codebase & Test Architecture Documentation**: Documented objectives, core components, and data flows across `cmd/rsync/main.go`, `rsynccmd/rsynccmd.go`, `integration/interop/wsl_e2e_test.go`, and `matrix_e2e_test.go`.
+
+### Changed
+- **CLI Exit Code Engine Propagation**: Updated `cmd/rsync/main.go` to inspect returned errors via `errors.As(err, &exitErr)` and dispatch exact numeric `rsync(1)` exit codes via `os.Exit(exitErr.Code)`, mapping context cancellations (`SIGINT`/`SIGTERM`) to exit code `20`.
+- **Zero-Allocation Multiplex Header I/O**: Replaced reflection-based `binary.Write` / `binary.Read` calls in `MultiplexWriter.WriteMsg` and `MultiplexReader.ReadMsg` (`internal/rsyncwire/wire.go`) with stack-allocated `[4]byte` operations (`binary.LittleEndian.PutUint32`/`Uint32`), removing heap allocation overhead per wire multiplex frame.
+- **Server Path Extraction Refactoring**: Deduplicated remaining-argument validation, path normalization, and restrict checks across daemon and server modes in `internal/maincmd/maincmd.go`.
+- **Interface Minimization & `io.ByteWriter` Compliance**: Updated `rsyncwire.Buffer.WriteByte(data byte) error` method signature to implement the standard Go `io.ByteWriter` interface.
+
+### Security
+- **Path Traversal Protection (`Gosec G703`)**: Wrapped SSH candidate path resolution in `internal/rsyncos/rsyncos.go` with `filepath.Clean(...)` before checking existence with `os.Stat`, reducing Gosec security issues to **0**.
+- **Supply Chain Action Pinning**: Pinned mutable GitHub Actions step tags in `.github/workflows/main.yml` to full 40-character commit SHAs (`checkout@11bd719...`, `setup-go@f111f37...`) to prevent supply-chain tag tampering.
+- **TLS Insecure Audit Justification**: Added explicit `// nosemgrep` directive and security justification for user-requested `--tls-insecure` CLI option in `internal/maincmd/clientserver.go`.
+
+### Fixed
+- **Hermetic Test Coverage Cleanup**: Updated `.gitignore` transient rules with `coverage*` patterns and ensured temporary coverage profile artifacts are automatically cleaned up without workspace pollution.
+- **Empty Branch & Unused Test Helper Cleanup**: Removed empty branches (`SA9003`) in `internal/receiver/generator.go` and `internal/sender/flist.go`, and added `TestGenerateTLSCertHelper` in `internal/maincmd/tls_test.go`.
+
 ## [v0.3.6] - 2026-08-03
 
 ### Added
