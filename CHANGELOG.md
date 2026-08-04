@@ -20,11 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - **Path Traversal Protection (`Gosec G703`)**: Wrapped SSH candidate path resolution in `internal/rsyncos/rsyncos.go` with `filepath.Clean(...)` before checking existence with `os.Stat`, reducing Gosec security issues to **0**.
-- **Supply Chain Action Pinning**: Pinned mutable GitHub Actions step tags in `.github/workflows/main.yml` to full 40-character commit SHAs (`checkout@11bd719...`, `setup-go@f111f37...`) to prevent supply-chain tag tampering.
 - **TLS Insecure Audit Justification**: Added explicit `// nosemgrep` directive and security justification for user-requested `--tls-insecure` CLI option in `internal/maincmd/clientserver.go`.
 
 ### Fixed
-- **Hermetic Test Coverage Cleanup**: Updated `.gitignore` transient rules with `coverage*` patterns and ensured temporary coverage profile artifacts are automatically cleaned up without workspace pollution.
 - **Empty Branch & Unused Test Helper Cleanup**: Removed empty branches (`SA9003`) in `internal/receiver/generator.go` and `internal/sender/flist.go`, and added `TestGenerateTLSCertHelper` in `internal/maincmd/tls_test.go`.
 
 ## [v0.3.6] - 2026-08-03
