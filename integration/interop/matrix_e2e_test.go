@@ -312,7 +312,7 @@ func TestE2EChrootSandbox(t *testing.T) {
 	}
 
 	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/gokr-rsync")
+	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
 	cmdBuild.Dir = findRepoRoot(t)
 	if out, err := cmdBuild.CombinedOutput(); err != nil {
 		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
@@ -374,7 +374,7 @@ func TestE2EAuthDaemon(t *testing.T) {
 	}
 
 	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/gokr-rsync")
+	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
 	cmdBuild.Dir = findRepoRoot(t)
 	if out, err := cmdBuild.CombinedOutput(); err != nil {
 		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
@@ -457,7 +457,7 @@ func TestE2EStress(t *testing.T) {
 	tmpDir := t.TempDir()
 	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
 
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/gokr-rsync")
+	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
 	cmdBuild.Dir = findRepoRoot(t)
 	if out, err := cmdBuild.CombinedOutput(); err != nil {
 		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
