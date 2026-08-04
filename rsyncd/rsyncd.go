@@ -22,10 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets"
 	"github.com/edsilegxrepo/rsync"
-	"github.com/edsilegxrepo/rsync/internal/parallel"
 	"github.com/edsilegxrepo/rsync/internal/log"
+	"github.com/edsilegxrepo/rsync/internal/parallel"
 	"github.com/edsilegxrepo/rsync/internal/progress"
 	"github.com/edsilegxrepo/rsync/internal/receiver"
 	"github.com/edsilegxrepo/rsync/internal/rsyncopts"
@@ -33,18 +32,20 @@ import (
 	"github.com/edsilegxrepo/rsync/internal/rsyncsec"
 	"github.com/edsilegxrepo/rsync/internal/rsyncwire"
 	"github.com/edsilegxrepo/rsync/internal/sender"
+	"github.com/edsilegxrepo/secretprotector/pkg/libsecsecrets"
 	"github.com/mmcloughlin/md4"
 )
 
 type Module struct {
-	Name        string           `toml:"name"`
-	Path        string           `toml:"path"` // If empty, FS or WritableFS must be non-nil
-	FS          fs.FS            `toml:"-"`    // If set, serve read-only from this instead of Path
-	WritableFS  rsync.WritableFS `toml:"-"`    // If set, serve read/write from this virtual FS
-	ACL         []string         `toml:"acl"`
-	Writable    bool             `toml:"writable"`
-	AuthUsers   []string         `toml:"auth_users"`   // Usernames allowed to connect; empty means no auth
-	SecretsFile string           `toml:"secrets_file"` // Path to file with user:password lines
+	Name          string           `toml:"name"`
+	Comment       string           `toml:"comment"` // Description presented during module listing
+	Path          string           `toml:"path"`    // If empty, FS or WritableFS must be non-nil
+	FS            fs.FS            `toml:"-"`       // If set, serve read-only from this instead of Path
+	WritableFS    rsync.WritableFS `toml:"-"`       // If set, serve read/write from this virtual FS
+	ACL           []string         `toml:"acl"`
+	Writable      bool             `toml:"writable"`
+	AuthUsers     []string         `toml:"auth_users"`      // Usernames allowed to connect; empty means no auth
+	SecretsFile   string           `toml:"secrets_file"`    // Path to file with user:password lines
 	TLSCert       string           `toml:"tls_cert"`        // Path to TLS certificate PEM file
 	TLSKey        string           `toml:"tls_key"`         // Path to TLS private key PEM file
 	TLSAllowedCNs []string         `toml:"tls_allowed_cns"` // Allowed X.509 Common Names for mTLS RBAC
@@ -197,7 +198,10 @@ func (s *Server) formatModuleList() string {
 	}
 	var list strings.Builder
 	for _, mod := range s.modules {
-		comment := mod.Name // for now
+		comment := mod.Comment
+		if comment == "" {
+			comment = mod.Name
+		}
 		fmt.Fprintf(&list, "%s\t%s\n",
 			mod.Name,
 			comment)
@@ -357,7 +361,7 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 
 	s.logger.Printf("flags: %+v", flags)
 	osenv := &rsyncos.Env{Stderr: s.stderr}
-	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithGokrazyDefaults(osenv))
+	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithDefaults(osenv))
 	if err := pc.ParseArguments(osenv, flags); err != nil {
 		err = fmt.Errorf("parsing server args: %v", err)
 
@@ -375,7 +379,7 @@ func (s *Server) HandleDaemonConn(ctx context.Context, conn *Conn) (err error) {
 		// Switch to multiplexing protocol, but only for server-side transmissions.
 		// Transmissions received from the client are not multiplexed.
 		mpx := &rsyncwire.MultiplexWriter{Writer: c.Writer}
-		_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gokr-rsync [sender]: %v\n", err))
+		_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gorsync [sender]: %v\n", err))
 
 		return err
 	}
@@ -455,7 +459,7 @@ func (s *Server) InternalHandleConn(ctx context.Context, conn *Conn, module *Mod
 
 func (s *Server) HandleConnArgs(ctx context.Context, conn *Conn, module *Module, args []string) error {
 	osenv := &rsyncos.Env{Stderr: s.stderr}
-	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithGokrazyDefaults(osenv))
+	pc := rsyncopts.NewContext(rsyncopts.NewOptionsWithDefaults(osenv))
 	if err := pc.ParseArguments(osenv, args); err != nil {
 		return fmt.Errorf("parsing server args: %v", err)
 	}
@@ -514,7 +518,7 @@ func (s *Server) handleConn(ctx context.Context, conn *Conn, module *Module, pc 
 		// If returning an error, send the error to the client for display, too:
 		defer func() {
 			if err != nil {
-				_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gokr-rsync [sender]: %v\n", err))
+				_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gorsync [sender]: %v\n", err))
 			}
 		}()
 
@@ -524,7 +528,7 @@ func (s *Server) handleConn(ctx context.Context, conn *Conn, module *Module, pc 
 	// If returning an error, send the error to the client for display, too:
 	defer func() {
 		if err != nil {
-			_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gokr-rsync [receiver]: %v\n", err))
+			_, _ = mpx.WriteMsg(rsyncwire.MsgErrorXfer, fmt.Appendf(nil, "gorsync [receiver]: %v\n", err))
 		}
 	}()
 	return s.handleConnReceiver(module, crd, cwr, paths, opts, false, c, sessionChecksumSeed)
@@ -561,21 +565,21 @@ func (s *Server) handleConnReceiver(module *Module, crd *rsyncwire.CountingReade
 			Verbose:  opts.Verbose(),
 			Progress: opts.Progress(),
 
-			DeleteMode:       opts.DeleteMode(),
-			PreserveGid:      opts.PreserveGid(),
-			PreserveUid:      opts.PreserveUid(),
-			PreserveLinks:    opts.PreserveLinks(),
-			PreservePerms:    opts.PreservePerms(),
-			PreserveDevices:  opts.PreserveDevices(),
-			PreserveSpecials: opts.PreserveSpecials(),
-			PreserveTimes:    opts.PreserveMTimes(),
+			DeleteMode:        opts.DeleteMode(),
+			PreserveGid:       opts.PreserveGid(),
+			PreserveUid:       opts.PreserveUid(),
+			PreserveLinks:     opts.PreserveLinks(),
+			PreservePerms:     opts.PreservePerms(),
+			PreserveDevices:   opts.PreserveDevices(),
+			PreserveSpecials:  opts.PreserveSpecials(),
+			PreserveTimes:     opts.PreserveMTimes(),
 			PreserveHardlinks: opts.PreserveHardLinks(),
-			IgnoreTimes:    opts.IgnoreTimes(),
-			SizeOnly:       opts.SizeOnly(),
-			TempDir:        opts.TempDir(),
-			AlwaysChecksum: opts.AlwaysChecksum(),
-			WholeFile:      opts.WholeFile(),
-			WritableFS:     module.WritableFS,
+			IgnoreTimes:       opts.IgnoreTimes(),
+			SizeOnly:          opts.SizeOnly(),
+			TempDir:           opts.TempDir(),
+			AlwaysChecksum:    opts.AlwaysChecksum(),
+			WholeFile:         opts.WholeFile(),
+			WritableFS:        module.WritableFS,
 
 			InfoGTE:  opts.InfoGTE,
 			DebugGTE: opts.DebugGTE,

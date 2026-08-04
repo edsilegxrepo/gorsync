@@ -124,6 +124,14 @@ sequenceDiagram
 | **Virtual FS API** | `TestReceiver_WritableFS` | Validates `rsync.WritableFS` in-memory mock filesystem upload target. | **PASS**: Upload succeeds in memory without physical disk writes. |
 | **Structured API** | `TestClientListFilesMock` | Validates `rsyncclient.ListFiles` API returning structured Go file objects. | **PASS**: `[]rsyncclient.File` returned with correct names and sizes. |
 
+### Protocol Support & Feature Verification Matrix
+
+| Protocol | Feature Set | Code Implementation | Test Verification |
+| :--- | :--- | :--- | :--- |
+| **Protocol 27** | • Fixed 32-bit integer wire framing (`ReadInt32`/`WriteInt32`)<br>• Multiplexed error/data channel (`0x07` / `0x00`)<br>• MD4/MD5 16-byte fixed checksum digests<br>• Legacy file list exchange flags | [`internal/rsyncwire/wire.go`](internal/rsyncwire/wire.go)<br>[`internal/sender/flist.go`](internal/sender/flist.go) | **Unit Test**: `TestProtocol27Features` (**PASS**)<br>**Live Interop**: `TestE2EMatrixAndStress` (**PASS**) |
+| **Protocol 30/31** | • 64-bit Variable-Length Integer Encoding (`ReadVarInt`/`WriteVarInt`)<br>• String-based Checksum Negotiation (`xxhash`, `sha1`, `md5`, `md4`)<br>• `--protocol=30` / `--protocol=31` flag parsing<br>• Checksum digest header expansion up to 32 bytes (`types.go`) | [`internal/rsyncwire/varint.go`](internal/rsyncwire/varint.go)<br>[`internal/rsyncchecksum/negotiation.go`](internal/rsyncchecksum/negotiation.go)<br>[`types.go`](types.go) | **Unit Test**: `TestProtocol30_31Features` (**PASS**)<br>**Live Interop**: `TestPhase5Protocol30_31_4Scenarios` (**PASS** across 4 scenarios with AlmaLinuxOS-9 `rsync 3.2.x`) |
+| **Protocol 32** | • 32-bit Variable-Length Integer Encoding (`ReadVarInt32`/`WriteVarInt32`)<br>• 64-bit Nanosecond Timestamp Precision (`ReadTime64`/`WriteTime64`)<br>• `MaxProtocolVersion = 32` ceiling declaration | [`internal/rsyncwire/varint.go`](internal/rsyncwire/varint.go)<br>[`consts.go`](consts.go) | **Unit Test**: `TestProtocol32Features` (**PASS**)<br>**Live Interop**: `TestPhase6Protocol32_4Scenarios` (**PASS** across 4 scenarios) |
+
 ---
 
 ## 5. Code Coverage Report

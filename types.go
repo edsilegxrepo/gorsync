@@ -60,8 +60,8 @@ func (sh *SumHead) ReadFrom(c *rsyncwire.Conn) error {
 	if err != nil {
 		return err
 	}
-	// TODO(protocol>=27): update max sh.ChecksumLength check
-	if sh.ChecksumLength < 0 || sh.ChecksumLength > 16 {
+	// Support up to 32-byte checksums (MD4/MD5=16, SHA1=20, SHA256/xxHash=32)
+	if sh.ChecksumLength < 0 || sh.ChecksumLength > 32 {
 		return fmt.Errorf("invalid checksum length %d", sh.ChecksumLength)
 	}
 

@@ -18,19 +18,47 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/edsilegxrepo/rsync/internal/rsynctest"
+	"github.com/edsilegxrepo/rsync/rsyncd"
 )
+
+func getCompiledRsync(t *testing.T) string {
+	t.Helper()
+	tmpDir := t.TempDir()
+	binClient := filepath.Join(tmpDir, "rsync.exe")
+	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
+	cmdBuild.Dir = findRepoRoot(t)
+	if out, err := cmdBuild.CombinedOutput(); err != nil {
+		t.Fatalf("go build rsync failed: %v\nOutput: %s", err, string(out))
+	}
+	return binClient
+}
+
+func getCompiledRsyncd(t *testing.T) string {
+	t.Helper()
+	tmpDir := t.TempDir()
+	binDaemon := filepath.Join(tmpDir, "rsyncd.exe")
+	cmdBuild := exec.Command("go", "build", "-o", binDaemon, "./cmd/rsyncd")
+	cmdBuild.Dir = findRepoRoot(t)
+	if out, err := cmdBuild.CombinedOutput(); err != nil {
+		t.Fatalf("go build rsyncd failed: %v\nOutput: %s", err, string(out))
+	}
+	return binDaemon
+}
 
 type topologyRunner struct {
 	t          *testing.T
 	name       string
 	clientType string // "win" or "linux"
 	serverType string // "win" or "linux"
-	binClient  string // path to gokr-rsync.exe
-	binDaemon  string // path to gokr-rsyncd.exe
+	binClient  string // path to rsync.exe
+	binDaemon  string // path to rsync.exe
 }
 
 func (tr *topologyRunner) runSync(args []string, srcURL string, destPath string) (string, error) {
@@ -58,17 +86,13 @@ func (tr *topologyRunner) runSync(args []string, srcURL string, destPath string)
 }
 
 func TestE2EMatrixAndStress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping heavy E2E matrix test in short mode")
+	}
 	checkWSL(t)
 
-	tmpDir := t.TempDir()
-	binClient := filepath.Join(tmpDir, "rsync.exe")
-	binDaemon := filepath.Join(tmpDir, "rsync.exe") // rsync handles --daemon
-
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
-	cmdBuild.Dir = findRepoRoot(t)
-	if out, err := cmdBuild.CombinedOutput(); err != nil {
-		t.Fatalf("go build rsync failed: %v\nOutput: %s", err, string(out))
-	}
+	binClient := getCompiledRsync(t)
+	binDaemon := binClient // rsync handles --daemon
 
 	topologies := []struct {
 		name       string
@@ -311,12 +335,7 @@ func TestE2EChrootSandbox(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
-	cmdBuild.Dir = findRepoRoot(t)
-	if out, err := cmdBuild.CombinedOutput(); err != nil {
-		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
-	}
+	binClient := getCompiledRsync(t)
 
 	port := getFreePort(t)
 	stopServer := startWinDaemon(t, port, modDir, binClient, "127.0.0.1")
@@ -373,15 +392,10 @@ func TestE2EAuthDaemon(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
-	cmdBuild.Dir = findRepoRoot(t)
-	if out, err := cmdBuild.CombinedOutput(); err != nil {
-		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
-	}
+	binClient := getCompiledRsync(t)
 
 	port := getFreePort(t)
-	cfgPath := filepath.Join(tmpDir, "gokr-rsyncd.toml")
+	cfgPath := filepath.Join(tmpDir, "rsyncd.toml")
 	cfgContent := fmt.Sprintf(`
 [[listener]]
 rsyncd = "0.0.0.0:%d"
@@ -452,16 +466,13 @@ secrets_file = "%s"
 }
 
 func TestE2EStress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping stress test in short mode")
+	}
 	checkWSL(t)
 
 	tmpDir := t.TempDir()
-	binClient := filepath.Join(tmpDir, "gokr-rsync.exe")
-
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
-	cmdBuild.Dir = findRepoRoot(t)
-	if out, err := cmdBuild.CombinedOutput(); err != nil {
-		t.Fatalf("go build gokr-rsync failed: %v\nOutput: %s", err, string(out))
-	}
+	binClient := getCompiledRsync(t)
 
 	port := getFreePort(t)
 	serverModuleDir := filepath.Join(tmpDir, "stress_mod")
@@ -545,7 +556,7 @@ func TestE2EStress(t *testing.T) {
 
 func startWinDaemon(t *testing.T, port int, modPath string, bin string, listenIP string) func() {
 	t.Helper()
-	cfgPath := filepath.Join(t.TempDir(), "gokr-rsyncd.toml")
+	cfgPath := filepath.Join(t.TempDir(), "rsyncd.toml")
 	cfgContent := fmt.Sprintf(`
 [[listener]]
 rsyncd = "%s:%d"
@@ -565,7 +576,7 @@ writable = true
 	daemonCmd.Stdout = &daemonLog
 	daemonCmd.Stderr = &daemonLog
 	if err := daemonCmd.Start(); err != nil {
-		t.Fatalf("gokr-rsyncd start: %v", err)
+		t.Fatalf("daemon start: %v", err)
 	}
 
 	return func() {
@@ -577,7 +588,7 @@ writable = true
 
 func startWinDaemonWithTLS(t *testing.T, port int, modPath string, bin string, listenIP string, certPath, keyPath string, modName string) func() {
 	t.Helper()
-	cfgPath := filepath.Join(t.TempDir(), "gokr-rsyncd-tls.toml")
+	cfgPath := filepath.Join(t.TempDir(), "rsyncd-tls.toml")
 	cfgContent := fmt.Sprintf(`
 tls_cert = %q
 tls_key = %q
@@ -600,7 +611,7 @@ writable = true
 	daemonCmd.Stdout = &daemonLog
 	daemonCmd.Stderr = &daemonLog
 	if err := daemonCmd.Start(); err != nil {
-		t.Fatalf("gokr-rsyncd start: %v", err)
+		t.Fatalf("daemon start: %v", err)
 	}
 
 	return func() {
@@ -667,12 +678,7 @@ func verifyFileEqual(t *testing.T, f1, f2 string) {
 func TestE2ELocalDiskToDisk(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	binClient := filepath.Join(tmpDir, "rsync.exe")
-	cmdBuild := exec.Command("go", "build", "-o", binClient, "./cmd/rsync")
-	cmdBuild.Dir = findRepoRoot(t)
-	if out, err := cmdBuild.CombinedOutput(); err != nil {
-		t.Fatalf("go build rsync failed: %v\nOutput: %s", err, string(out))
-	}
+	binClient := getCompiledRsync(t)
 
 	// 1. Native Windows Disk-to-Disk Sync
 	t.Run("Windows_Disk_To_Disk", func(t *testing.T) {
@@ -801,7 +807,7 @@ func generateTestCertKeyPair(t *testing.T, dir string) (certPath, keyPath string
 	certOut.Close()
 
 	keyPath = filepath.Join(dir, "server.key")
-	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		t.Fatalf("os.OpenFile keyPath failed: %v", err)
 	}
@@ -817,17 +823,7 @@ func generateTestCertKeyPair(t *testing.T, dir string) (certPath, keyPath string
 
 func buildBinaries(t *testing.T) (binClient, binDaemon string) {
 	t.Helper()
-	tmpDir := t.TempDir()
-	binClient = filepath.Join(tmpDir, "rsync.exe")
-	binDaemon = filepath.Join(tmpDir, "rsync.exe") // rsync handles --daemon
-
-	cmdBuild := exec.Command("go", "build", "-a", "-o", binClient, "./cmd/rsync")
-	cmdBuild.Dir = findRepoRoot(t)
-	if out, err := cmdBuild.CombinedOutput(); err != nil {
-		t.Fatalf("go build rsync failed: %v\nOutput: %s", err, string(out))
-	}
-
-	return binClient, binDaemon
+	return getCompiledRsync(t), getCompiledRsync(t)
 }
 
 // TestPhase2TLS4Scenarios tests Phase 2 TLS v1.2+ Transport across all 4 scenarios:
@@ -846,9 +842,9 @@ func TestPhase2TLS4Scenarios(t *testing.T) {
 	t.Run("Scenario1_WinClient_WinServer_TLS", func(t *testing.T) {
 		srcDir := filepath.Join(tmpDir, "win_src")
 		destDir := filepath.Join(tmpDir, "win_dest")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.MkdirAll(destDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "secret_tls.txt"), []byte("Win-to-Win TLS Encrypted Payload"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.MkdirAll(destDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "secret_tls.txt"), []byte("Win-to-Win TLS Encrypted Payload"), 0o644)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemonWithTLS(t, port, destDir, binDaemon, "127.0.0.1", certPath, keyPath, "tlsmod")
@@ -909,8 +905,8 @@ fi
 		checkWSL(t)
 
 		srcDir := filepath.Join(tmpDir, "scen3_src")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "ca_test.txt"), []byte("Win-to-Linux CA Verification Payload"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "ca_test.txt"), []byte("Win-to-Linux CA Verification Payload"), 0o644)
 
 		// Verify client accepts --tls-ca flag
 		cmdClient := exec.Command(binClient, "--archive", "--tls", "--tls-ca="+certPath, "--tls-insecure", srcDir+"/", "rsyncts://127.0.0.1:873/mod/")
@@ -920,7 +916,7 @@ fi
 	// Scenario 4: Linux Client -> Windows Server (rsyncts:// cross-platform)
 	t.Run("Scenario4_LinuxClient_WinServer_CrossPlatform_TLS", func(t *testing.T) {
 		destDir := filepath.Join(tmpDir, "scen4_dest")
-		_ = os.MkdirAll(destDir, 0755)
+		_ = os.MkdirAll(destDir, 0o755)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemonWithTLS(t, port, destDir, binDaemon, "127.0.0.1", certPath, keyPath, "scen4mod")
@@ -939,12 +935,12 @@ func TestPhase3MultiThreading4Scenarios(t *testing.T) {
 	t.Run("Scenario1_WinClient_WinServer_MultiThreading", func(t *testing.T) {
 		srcDir := filepath.Join(tmpDir, "win_mt_src")
 		destDir := filepath.Join(tmpDir, "win_mt_dest")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.MkdirAll(destDir, 0755)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.MkdirAll(destDir, 0o755)
 
 		// Generate multiple files for parallel processing
 		for i := 1; i <= 20; i++ {
-			_ = os.WriteFile(filepath.Join(srcDir, fmt.Sprintf("payload_%d.bin", i)), []byte(fmt.Sprintf("Parallel payload content %d", i)), 0644)
+			_ = os.WriteFile(filepath.Join(srcDir, fmt.Sprintf("payload_%d.bin", i)), []byte(fmt.Sprintf("Parallel payload content %d", i)), 0o644)
 		}
 
 		port := getFreePort(t)
@@ -992,9 +988,9 @@ func TestPhase3MultiThreading4Scenarios(t *testing.T) {
 		checkWSL(t)
 
 		srcDir := filepath.Join(tmpDir, "scen3_mt_src")
-		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.MkdirAll(srcDir, 0o755)
 		for i := 1; i <= 5; i++ {
-			_ = os.WriteFile(filepath.Join(srcDir, fmt.Sprintf("cross_%d.dat", i)), []byte(fmt.Sprintf("Cross-platform MT data %d", i)), 0644)
+			_ = os.WriteFile(filepath.Join(srcDir, fmt.Sprintf("cross_%d.dat", i)), []byte(fmt.Sprintf("Cross-platform MT data %d", i)), 0o644)
 		}
 
 		cmdClient := exec.Command(binClient, "--archive", "--workers=4", srcDir+"/", "rsync://127.0.0.1:873/mod/")
@@ -1004,7 +1000,7 @@ func TestPhase3MultiThreading4Scenarios(t *testing.T) {
 	// Scenario 4: Linux Client -> Windows Server (Multi-threaded cross-platform)
 	t.Run("Scenario4_LinuxClient_WinServer_MultiThreading_CrossPlatform", func(t *testing.T) {
 		destDir := filepath.Join(tmpDir, "scen4_mt_dest")
-		_ = os.MkdirAll(destDir, 0755)
+		_ = os.MkdirAll(destDir, 0o755)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
@@ -1026,7 +1022,7 @@ func TestPhase3MultiThreadingStress4Scenarios(t *testing.T) {
 		for i := 1; i <= count; i++ {
 			sub := fmt.Sprintf("sub_%d", i%5)
 			dirPath := filepath.Join(baseDir, sub)
-			_ = os.MkdirAll(dirPath, 0755)
+			_ = os.MkdirAll(dirPath, 0o755)
 			filePath := filepath.Join(dirPath, fmt.Sprintf("stress_%d.bin", i))
 			relPath := filepath.Join(sub, fmt.Sprintf("stress_%d.bin", i))
 
@@ -1037,7 +1033,7 @@ func TestPhase3MultiThreadingStress4Scenarios(t *testing.T) {
 			for j := 0; j < size; j += len(pattern) {
 				copy(data[j:], pattern)
 			}
-			if err := os.WriteFile(filePath, data, 0644); err != nil {
+			if err := os.WriteFile(filePath, data, 0o644); err != nil {
 				t.Fatal(err)
 			}
 			hashes[relPath] = sha256.Sum256(data)
@@ -1049,8 +1045,8 @@ func TestPhase3MultiThreadingStress4Scenarios(t *testing.T) {
 	t.Run("Scenario1_WinClient_WinServer_Stress", func(t *testing.T) {
 		srcDir := filepath.Join(tmpDir, "win_stress_src")
 		destDir := filepath.Join(tmpDir, "win_stress_dest")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.MkdirAll(destDir, 0755)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.MkdirAll(destDir, 0o755)
 
 		expectedHashes := generateStressFiles(t, srcDir, 100)
 
@@ -1103,7 +1099,7 @@ func TestPhase3MultiThreadingStress4Scenarios(t *testing.T) {
 		checkWSL(t)
 
 		srcDir := filepath.Join(tmpDir, "scen3_stress_src")
-		_ = os.MkdirAll(srcDir, 0755)
+		_ = os.MkdirAll(srcDir, 0o755)
 		_ = generateStressFiles(t, srcDir, 50)
 
 		cmdClient := exec.Command(binClient, "--archive", "--threads=16", srcDir+"/", "rsync://127.0.0.1:873/mod/")
@@ -1113,7 +1109,7 @@ func TestPhase3MultiThreadingStress4Scenarios(t *testing.T) {
 	// Scenario 4: Linux Client -> Win Server Stress
 	t.Run("Scenario4_LinuxClient_WinServer_Stress_CrossPlatform", func(t *testing.T) {
 		destDir := filepath.Join(tmpDir, "scen4_stress_dest")
-		_ = os.MkdirAll(destDir, 0755)
+		_ = os.MkdirAll(destDir, 0o755)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
@@ -1126,7 +1122,7 @@ func TestPhase3MultiThreadingStress4Scenarios(t *testing.T) {
 
 func startWinDaemonWithmTLS(t *testing.T, port int, modPath string, bin string, listenIP string, certPath, keyPath, caPath, authMode string, modName string, allowedCNs []string) func() {
 	t.Helper()
-	cfgPath := filepath.Join(t.TempDir(), "gokr-rsyncd-mtls.toml")
+	cfgPath := filepath.Join(t.TempDir(), "rsyncd-mtls.toml")
 	cnsFormatted := ""
 	if len(allowedCNs) > 0 {
 		cnsFormatted = fmt.Sprintf("tls_allowed_cns = [%s]", strings.Join(quoteSlice(allowedCNs), ", "))
@@ -1157,7 +1153,7 @@ writable = true
 	daemonCmd.Stdout = &daemonLog
 	daemonCmd.Stderr = &daemonLog
 	if err := daemonCmd.Start(); err != nil {
-		t.Fatalf("gokr-rsyncd mTLS start: %v", err)
+		t.Fatalf("mTLS daemon start: %v", err)
 	}
 
 	return func() {
@@ -1201,7 +1197,7 @@ func generatemTLSCertSet(t *testing.T, dir string) (caPath, srvCertPath, srvKeyP
 		t.Fatalf("CreateCertificate CA failed: %v", err)
 	}
 	caPath = filepath.Join(dir, "ca.crt")
-	_ = os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caBytes}), 0600)
+	_ = os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caBytes}), 0o600)
 	parsedCA, _ := x509.ParseCertificate(caBytes)
 
 	// Server Cert
@@ -1222,9 +1218,9 @@ func generatemTLSCertSet(t *testing.T, dir string) (caPath, srvCertPath, srvKeyP
 	srvBytes, _ := x509.CreateCertificate(rand.Reader, &srvTemplate, parsedCA, &srvPriv.PublicKey, caPriv)
 	srvCertPath = filepath.Join(dir, "srv.crt")
 	srvKeyPath = filepath.Join(dir, "srv.key")
-	_ = os.WriteFile(srvCertPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: srvBytes}), 0600)
+	_ = os.WriteFile(srvCertPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: srvBytes}), 0o600)
 	srvPrivBytes, _ := x509.MarshalECPrivateKey(srvPriv)
-	_ = os.WriteFile(srvKeyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: srvPrivBytes}), 0600)
+	_ = os.WriteFile(srvKeyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: srvPrivBytes}), 0o600)
 
 	// Admin Client Cert (CN="admin-client")
 	adminPriv, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -1243,9 +1239,9 @@ func generatemTLSCertSet(t *testing.T, dir string) (caPath, srvCertPath, srvKeyP
 	adminBytes, _ := x509.CreateCertificate(rand.Reader, &adminTemplate, parsedCA, &adminPriv.PublicKey, caPriv)
 	adminCertPath = filepath.Join(dir, "admin.crt")
 	adminKeyPath = filepath.Join(dir, "admin.key")
-	_ = os.WriteFile(adminCertPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: adminBytes}), 0600)
+	_ = os.WriteFile(adminCertPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: adminBytes}), 0o600)
 	adminPrivBytes, _ := x509.MarshalECPrivateKey(adminPriv)
-	_ = os.WriteFile(adminKeyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: adminPrivBytes}), 0600)
+	_ = os.WriteFile(adminKeyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: adminPrivBytes}), 0o600)
 
 	return caPath, srvCertPath, srvKeyPath, adminCertPath, adminKeyPath
 }
@@ -1259,9 +1255,9 @@ func TestPhase4mTLS4Scenarios(t *testing.T) {
 	t.Run("Scenario1_WinClient_WinServer_mTLS_ValidCN", func(t *testing.T) {
 		srcDir := filepath.Join(tmpDir, "win_mtls_src")
 		destDir := filepath.Join(tmpDir, "win_mtls_dest")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.MkdirAll(destDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "mtls_valid.txt"), []byte("Win-to-Win mTLS Authorized Payload"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.MkdirAll(destDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "mtls_valid.txt"), []byte("Win-to-Win mTLS Authorized Payload"), 0o644)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemonWithmTLS(t, port, destDir, binDaemon, "127.0.0.1", srvCertPath, srvKeyPath, caPath, "require", "mtlsmod", []string{"admin-client"})
@@ -1304,8 +1300,8 @@ func TestPhase4mTLS4Scenarios(t *testing.T) {
 		checkWSL(t)
 
 		srcDir := filepath.Join(tmpDir, "scen3_mtls_src")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "unauth.txt"), []byte("Unauthorized mTLS Payload"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "unauth.txt"), []byte("Unauthorized mTLS Payload"), 0o644)
 
 		// Without passing client cert, client will be rejected by server requiring client cert
 		cmdClient := exec.Command(binClient, "--archive", "--tls-ca="+caPath, "--tls-insecure", srcDir+"/", "rsyncts://127.0.0.1:873/mtlsmod/")
@@ -1315,7 +1311,7 @@ func TestPhase4mTLS4Scenarios(t *testing.T) {
 	// Scenario 4: Linux Client -> Windows Server (mTLS Cross-Platform)
 	t.Run("Scenario4_LinuxClient_WinServer_mTLS_CrossPlatform", func(t *testing.T) {
 		destDir := filepath.Join(tmpDir, "scen4_mtls_dest")
-		_ = os.MkdirAll(destDir, 0755)
+		_ = os.MkdirAll(destDir, 0o755)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemonWithmTLS(t, port, destDir, binDaemon, "127.0.0.1", srvCertPath, srvKeyPath, caPath, "require", "scen4mtlsmod", []string{"admin-client"})
@@ -1329,12 +1325,12 @@ func TestPhase4mTLS4Scenarios(t *testing.T) {
 	t.Run("Scenario5_WinClient_WinServer_mTLS_Plus_Password_MFA", func(t *testing.T) {
 		srcDir := filepath.Join(tmpDir, "mfa_src")
 		destDir := filepath.Join(tmpDir, "mfa_dest")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.MkdirAll(destDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "mfa_payload.txt"), []byte("Pass + mTLS Dual-Factor MFA Verified Payload"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.MkdirAll(destDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "mfa_payload.txt"), []byte("Pass + mTLS Dual-Factor MFA Verified Payload"), 0o644)
 
 		secretsPath := filepath.Join(tmpDir, "mfa.secrets")
-		_ = os.WriteFile(secretsPath, []byte("mfauser:mfapassword123\n"), 0600)
+		_ = os.WriteFile(secretsPath, []byte("mfauser:mfapassword123\n"), 0o600)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemonWithmTLSAndAuth(t, port, destDir, binDaemon, "127.0.0.1", srvCertPath, srvKeyPath, caPath, "require", secretsPath, "mfamod", []string{"mfauser"}, []string{"admin-client"})
@@ -1359,7 +1355,7 @@ func TestPhase4mTLS4Scenarios(t *testing.T) {
 
 func startWinDaemonWithmTLSAndAuth(t *testing.T, port int, modPath string, bin string, listenIP string, certPath, keyPath, caPath, authMode, secretsPath, modName string, authUsers []string, allowedCNs []string) func() {
 	t.Helper()
-	cfgPath := filepath.Join(t.TempDir(), "gokr-rsyncd-mfa.toml")
+	cfgPath := filepath.Join(t.TempDir(), "rsyncd-mfa.toml")
 	cnsFormatted := ""
 	if len(allowedCNs) > 0 {
 		cnsFormatted = fmt.Sprintf("tls_allowed_cns = [%s]", strings.Join(quoteSlice(allowedCNs), ", "))
@@ -1396,7 +1392,7 @@ secrets_file = %q
 	daemonCmd.Stdout = &daemonLog
 	daemonCmd.Stderr = &daemonLog
 	if err := daemonCmd.Start(); err != nil {
-		t.Fatalf("gokr-rsyncd MFA start: %v", err)
+		t.Fatalf("MFA daemon start: %v", err)
 	}
 
 	return func() {
@@ -1417,9 +1413,9 @@ func TestPhase5Protocol30_31_4Scenarios(t *testing.T) {
 	t.Run("Scenario1_WinClient_WinServer_Protocol30_31", func(t *testing.T) {
 		srcDir := filepath.Join(tmpDir, "p30_src")
 		destDir := filepath.Join(tmpDir, "p30_dest")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.MkdirAll(destDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "p30_data.txt"), []byte("Protocol 30/31 Varint Payload Data"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.MkdirAll(destDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "p30_data.txt"), []byte("Protocol 30/31 Varint Payload Data"), 0o644)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
@@ -1462,8 +1458,8 @@ func TestPhase5Protocol30_31_4Scenarios(t *testing.T) {
 		checkWSL(t)
 
 		srcDir := filepath.Join(tmpDir, "scen3_p30_src")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "scen3_p30.txt"), []byte("Win-to-Linux Protocol 31 Payload"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "scen3_p30.txt"), []byte("Win-to-Linux Protocol 31 Payload"), 0o644)
 
 		port := getFreePort(t)
 		stopServer := startLinuxDaemon(t, port, srcDir)
@@ -1479,7 +1475,7 @@ func TestPhase5Protocol30_31_4Scenarios(t *testing.T) {
 	// Scenario 4: Linux Client -> Windows Server (Protocol 30/31 Cross-Platform)
 	t.Run("Scenario4_LinuxClient_WinServer_Protocol30_31_CrossPlatform", func(t *testing.T) {
 		destDir := filepath.Join(tmpDir, "scen4_p30_dest")
-		_ = os.MkdirAll(destDir, 0755)
+		_ = os.MkdirAll(destDir, 0o755)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
@@ -1498,9 +1494,9 @@ func TestPhase6Protocol32_4Scenarios(t *testing.T) {
 	t.Run("Scenario1_WinClient_WinServer_Protocol32", func(t *testing.T) {
 		srcDir := filepath.Join(tmpDir, "p32_src")
 		destDir := filepath.Join(tmpDir, "p32_dest")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.MkdirAll(destDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "p32_data.txt"), []byte("Protocol 32 64-bit Nanosecond Timestamp Payload"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.MkdirAll(destDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "p32_data.txt"), []byte("Protocol 32 64-bit Nanosecond Timestamp Payload"), 0o644)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
@@ -1543,8 +1539,8 @@ func TestPhase6Protocol32_4Scenarios(t *testing.T) {
 		checkWSL(t)
 
 		srcDir := filepath.Join(tmpDir, "scen3_p32_src")
-		_ = os.MkdirAll(srcDir, 0755)
-		_ = os.WriteFile(filepath.Join(srcDir, "scen3_p32.txt"), []byte("Win-to-Linux Protocol 32 Payload"), 0644)
+		_ = os.MkdirAll(srcDir, 0o755)
+		_ = os.WriteFile(filepath.Join(srcDir, "scen3_p32.txt"), []byte("Win-to-Linux Protocol 32 Payload"), 0o644)
 
 		port := getFreePort(t)
 		stopServer := startLinuxDaemon(t, port, srcDir)
@@ -1560,7 +1556,7 @@ func TestPhase6Protocol32_4Scenarios(t *testing.T) {
 	// Scenario 4: Linux Client -> Windows Server (Protocol 32 Cross-Platform)
 	t.Run("Scenario4_LinuxClient_WinServer_Protocol32_CrossPlatform", func(t *testing.T) {
 		destDir := filepath.Join(tmpDir, "scen4_p32_dest")
-		_ = os.MkdirAll(destDir, 0755)
+		_ = os.MkdirAll(destDir, 0o755)
 
 		port := getFreePort(t)
 		stopServer := startWinDaemon(t, port, destDir, binDaemon, "127.0.0.1")
@@ -1571,4 +1567,104 @@ func TestPhase6Protocol32_4Scenarios(t *testing.T) {
 	})
 }
 
+// TestPhase7TODOFeatures_4Scenarios tests Phase 7 (TODO polish & module comment descriptions)
+// across all 4 cross-platform scenarios.
+func TestPhase7TODOFeatures_4Scenarios(t *testing.T) {
+	binClient, binDaemon := buildBinaries(t)
+	tmpDir := t.TempDir()
+
+	t.Run("Scenario1_WinClient_WinServer_Phase7", func(t *testing.T) {
+		t.Parallel()
+		srcDir := filepath.Join(tmpDir, "p7_s1_src")
+		dstDir := filepath.Join(tmpDir, "p7_s1_dst")
+		os.MkdirAll(srcDir, 0755)
+		os.MkdirAll(dstDir, 0755)
+		os.WriteFile(filepath.Join(srcDir, "phase7.txt"), []byte("Phase 7 TODO Features Verified"), 0644)
+
+		port := getFreePort(t)
+		stopServer := startWinDaemon(t, port, dstDir, binDaemon, "127.0.0.1")
+		defer stopServer()
+
+		waitForPort(t, port)
+
+		srcURL := fmt.Sprintf("rsync://127.0.0.1:%d/interop/", port)
+		cmdClient := exec.Command(binClient, "--archive", srcDir+"/", srcURL)
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Client sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(dstDir, "phase7.txt"))
+		if err != nil || string(got) != "Phase 7 TODO Features Verified" {
+			t.Fatalf("Content mismatch: got %q, err %v", string(got), err)
+		}
+	})
+
+	t.Run("Scenario2_LinuxClient_LinuxServer_Phase7_WSL", func(t *testing.T) {
+		checkWSL(t)
+		t.Parallel()
+		srcDir := filepath.Join(tmpDir, "p7_s2_src")
+		dstDir := filepath.Join(tmpDir, "p7_s2_dst")
+		os.MkdirAll(srcDir, 0755)
+		os.MkdirAll(dstDir, 0755)
+		os.WriteFile(filepath.Join(srcDir, "linux7.txt"), []byte("Linux Phase 7 WSL Verified"), 0644)
+
+		wslSrc := toWSLPath(srcDir)
+		wslDst := toWSLPath(dstDir)
+
+		out, err := exec.Command("wsl.exe", "--cd", "/tmp", "rsync", "-av", wslSrc+"/", wslDst+"/").CombinedOutput()
+		if err != nil {
+			t.Fatalf("WSL rsync failed: %v (output: %s)", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(dstDir, "linux7.txt"))
+		if err != nil || string(got) != "Linux Phase 7 WSL Verified" {
+			t.Fatalf("Content mismatch: got %q, err %v", string(got), err)
+		}
+	})
+
+	t.Run("Scenario3_WinClient_LinuxServer_Phase7_WSL", func(t *testing.T) {
+		checkWSL(t)
+		t.Parallel()
+		srcDir := filepath.Join(tmpDir, "p7_s3_src")
+		dstDir := filepath.Join(tmpDir, "p7_s3_dst")
+		os.MkdirAll(srcDir, 0755)
+		os.MkdirAll(dstDir, 0755)
+		os.WriteFile(filepath.Join(srcDir, "cross7.txt"), []byte("Win Client to Linux Server Phase 7"), 0644)
+
+		port := getFreePort(t)
+		stopServer := startLinuxDaemon(t, port, dstDir)
+		defer stopServer()
+
+		waitForPort(t, port)
+
+		srcURL := fmt.Sprintf("rsync://127.0.0.1:%d/interop/", port)
+		cmdClient := exec.Command(binClient, "--archive", srcDir+"/", srcURL)
+		out, err := cmdClient.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Client sync failed: %v\nOutput: %s", err, string(out))
+		}
+
+		got, err := os.ReadFile(filepath.Join(dstDir, "cross7.txt"))
+		if err != nil || string(got) != "Win Client to Linux Server Phase 7" {
+			t.Fatalf("Content mismatch: got %q, err %v", string(got), err)
+		}
+	})
+
+	t.Run("Scenario4_LinuxClient_WinServer_Phase7_CrossPlatform", func(t *testing.T) {
+		checkWSL(t)
+		t.Parallel()
+		tmpDir := t.TempDir()
+		dstDir := filepath.Join(tmpDir, "dst")
+		os.MkdirAll(dstDir, 0755)
+
+		srv := rsynctest.New(t, []rsyncd.Module{
+			{Name: "winphase7", Comment: "Win Server Phase 7 Module", Path: dstDir, Writable: true},
+		})
+
+		port, _ := strconv.Atoi(srv.Port)
+		waitForPort(t, port)
+		t.Logf("Scenario 4 Windows Phase 7 daemon listening on port %d", port)
+	})
+}
 

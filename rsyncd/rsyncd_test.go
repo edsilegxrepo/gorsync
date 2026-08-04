@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"testing"
 	"testing/fstest"
 
 	"github.com/edsilegxrepo/rsync/rsyncd"
@@ -66,5 +67,15 @@ func ExampleNewServer_fsFS() {
 
 	if err := rsyncServer.Serve(context.Background(), listener); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func TestModuleComment(t *testing.T) {
+	mod := rsyncd.Module{
+		Name:    "backup",
+		Comment: "Daily Offsite Backups",
+	}
+	if mod.Comment != "Daily Offsite Backups" {
+		t.Fatalf("unexpected comment: got %q", mod.Comment)
 	}
 }
