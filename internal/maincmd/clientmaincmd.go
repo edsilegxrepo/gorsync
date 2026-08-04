@@ -200,7 +200,11 @@ func doCmd(osenv *rsyncos.Env, opts *rsyncopts.Options, machine, user, path stri
 
 		args = append(args, machine)
 
-		args = append(args, "rsync") // TODO: flag
+		remoteCmd := opts.RSYNCPath()
+		if remoteCmd == "" {
+			remoteCmd = "rsync"
+		}
+		args = append(args, remoteCmd)
 	} else {
 		// NOTE: tridge rsync will fork and run child_main(), we call Main() in
 		// a separate goroutine below.

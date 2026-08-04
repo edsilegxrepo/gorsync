@@ -744,6 +744,7 @@ See https://github.com/gokrazy/rsync for updates, bug reports, and answers
 }
 
 func (o *Options) ShellCommand() string    { return o.shell_cmd }
+func (o *Options) RSYNCPath() string       { return o.rsync_path }
 func (o *Options) UpdateOnly() bool        { return o.update_only != 0 }
 func (o *Options) DryRun() bool            { return o.dry_run != 0 }
 func (o *Options) PreserveLinks() bool     { return o.preserve_links != 0 }
@@ -1093,7 +1094,7 @@ func (o *Options) rsyncTable() []poptOption {
 		//{"time-limit", "", POPT_ARG_STRING, nil, OPT_STOP_AFTER}, /* earlier stop-after name */
 		//{"stop-at", "", POPT_ARG_STRING, nil, OPT_STOP_AT},
 		{"rsh", "e", POPT_ARG_STRING, &o.shell_cmd, 0},
-		//{"rsync-path", "", POPT_ARG_STRING, &o.rsync_path, 0},
+		{"rsync-path", "", POPT_ARG_STRING, &o.rsync_path, 0},
 		{"temp-dir", "T", POPT_ARG_STRING, &o.tmpdir, 0},
 		//{"iconv", "", POPT_ARG_STRING, &o.iconv_opt, 0},
 		//{"no-iconv", "", POPT_ARG_NONE, nil, OPT_NO_ICONV},
