@@ -41,18 +41,8 @@ func toWSLPath(winPath string) string {
 	rest := winPath[len(vol):]
 	drive := strings.ToLower(strings.TrimSuffix(vol, ":"))
 	rest = strings.ReplaceAll(rest, "\\", "/")
-	if drive == "e" {
-		// Drive E is NOT mounted in WSL. Redirect to WSL /tmp path to prevent errors.
-		cleanRest := strings.TrimPrefix(rest, "/")
-		cleanRest = strings.ReplaceAll(cleanRest, ":", "_")
-		wslTmpPath := fmt.Sprintf("/tmp/wsl_e_drive_sandbox/%s", cleanRest)
-		_ = exec.Command("wsl.exe", "--cd", "/tmp", "mkdir", "-p", filepath.Dir(wslTmpPath)).Run()
-		return wslTmpPath
-	}
-	if drive != "" {
-		wslMount := fmt.Sprintf("/mnt/%s", drive)
-		checkCmd := fmt.Sprintf("test -d %s || (mkdir -p %s && mount -t drvfs %s %s)", wslMount, wslMount, vol, wslMount)
-		_ = exec.Command("wsl.exe", "-u", "root", "--cd", "/tmp", "bash", "-c", checkCmd).Run()
+	if drive == "" {
+		return rest
 	}
 	return fmt.Sprintf("/mnt/%s%s", drive, rest)
 }
