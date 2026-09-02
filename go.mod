@@ -14,7 +14,7 @@ require (
 	golang.org/x/sys v0.47.0
 )
 
-require github.com/edsilegxrepo/secretprotector v0.0.3
+require github.com/edsilegxrepo/secretprotector v0.0.4
 
 require (
 	github.com/landlock-lsm/go-landlock v0.9.0
