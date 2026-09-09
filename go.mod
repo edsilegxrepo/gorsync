@@ -1,6 +1,6 @@
 module github.com/edsilegxrepo/gorsync
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -11,7 +11,7 @@ require (
 	github.com/mmcloughlin/md4 v0.1.2
 	golang.org/x/crypto v0.54.0
 	golang.org/x/sync v0.22.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 )
 
 require github.com/edsilegxrepo/secretprotector v0.0.3
